@@ -1,0 +1,9 @@
+{
+    "name": "Palace Pulse",
+    "short_name": "Palace Pulse",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#111315",
+    "theme_color": "#C7FF4A",
+    "description": "O mapa da cena independente"
+}

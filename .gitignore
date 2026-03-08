@@ -1,0 +1,19 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env
+.env.local
+*.env
+
+# Firebase - o firebase_options.dart está no repo com placeholders.
+# Após rodar flutterfire configure, considere adicionar ao .gitignore se usar credenciais sensíveis.
