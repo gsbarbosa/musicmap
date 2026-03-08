@@ -25,6 +25,10 @@ final userProfilesProvider =
   return ref.watch(profileServiceProvider).profilesStreamForUser(userId);
 });
 
+final totalProfileCountProvider = FutureProvider.autoDispose<int>((ref) async {
+  return ref.read(profileServiceProvider).getTotalProfileCount();
+});
+
 final mapLocationCountsProvider = FutureProvider.autoDispose<Map<String, int>>((ref) async {
   final realCounts = await ref.read(profileServiceProvider).getLocationCountsByState();
   if (!MapTestData.enableMapTestPins) return realCounts;

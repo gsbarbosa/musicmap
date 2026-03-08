@@ -6,7 +6,14 @@ class AppConstants {
   static const String appName = 'Palace Pulse';
   static const String appTagline = 'O mapa da cena independente';
 
+  /// Vagas para o pré-lançamento
+  static const int earlyAccessLimit = 500;
+
+  /// Vagas já reservadas (contam no total exibido)
+  static const int earlyAccessReserved = 49;
+
   // Firebase paths
+  static const String totalProfilesPath = 'stats/totalProfiles';
   static const String usersPath = 'users';
   static const String profilesPath = 'profiles';
   static const String profilesByOwnerPath = 'profiles_by_owner';

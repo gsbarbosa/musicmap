@@ -1,5 +1,11 @@
 {
   "rules": {
+    "stats": {
+      "totalProfiles": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
@@ -8,9 +14,7 @@
     },
     "profiles": {
       ".read": "auth != null",
-      "$profileId": {
-        ".write": "auth != null && newData.child('ownerUserId').val() === auth.uid"
-      }
+      ".write": "auth != null"
     },
     "profiles_by_owner": {
       "$uid": {

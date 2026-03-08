@@ -23,6 +23,11 @@ class ProfileService {
           .child(profile.ownerUserId)
           .child(profileId)
           .set(true);
+      try {
+        await _db.child(AppConstants.totalProfilesPath).set(ServerValue.increment(1));
+      } catch (_) {
+        // Ignora falha no contador (ex: regras não deployadas); perfil é salvo
+      }
     }
 
     return profileId;
@@ -130,6 +135,16 @@ class ProfileService {
       'profileCompleted': true,
       'updatedAt': DateTime.now().toIso8601String(),
     });
+  }
+
+  /// Retorna o total de bandas/artistas cadastradas (apenas dados reais do banco)
+  /// Lê de stats/totalProfiles (público) para exibir na landing para visitantes
+  Future<int> getTotalProfileCount() async {
+    final snapshot = await _db.child(AppConstants.totalProfilesPath).get();
+    if (!snapshot.exists || snapshot.value == null) return 0;
+    final v = snapshot.value;
+    if (v is num) return v.toInt();
+    return 0;
   }
 
   /// Retorna contagem de bandas/artistas por estado (para o mapa)
