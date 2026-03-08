@@ -1,9 +1,10 @@
 import 'package:palace_pulse/core/constants/app_constants.dart';
 
 /// Modelo do perfil de artista/banda
-/// Estrutura pensada para escalabilidade futura (mapa, busca, perfis públicos)
+/// Um usuário pode ter vários perfis (várias bandas/artistas)
 class UserProfile {
-  final String userId;
+  final String id;
+  final String ownerUserId;
   final String artistName;
   final String artistType;
   final String city;
@@ -22,7 +23,8 @@ class UserProfile {
   final DateTime updatedAt;
 
   const UserProfile({
-    required this.userId,
+    required this.id,
+    required this.ownerUserId,
     required this.artistName,
     required this.artistType,
     required this.city,
@@ -41,9 +43,10 @@ class UserProfile {
     required this.updatedAt,
   });
 
-  factory UserProfile.fromMap(String userId, Map<String, dynamic> map) {
+  factory UserProfile.fromMap(String profileId, Map<String, dynamic> map, {String? ownerUserIdOverride}) {
     return UserProfile(
-      userId: userId,
+      id: profileId,
+      ownerUserId: ownerUserIdOverride ?? map['ownerUserId'] ?? '',
       artistName: map['artistName'] ?? '',
       artistType: map['artistType'] ?? AppConstants.artistTypeSolo,
       city: map['city'] ?? '',
@@ -71,6 +74,7 @@ class UserProfile {
 
   Map<String, dynamic> toMap() {
     return {
+      'ownerUserId': ownerUserId,
       'artistName': artistName,
       'artistType': artistType,
       'city': city,
@@ -91,6 +95,8 @@ class UserProfile {
   }
 
   UserProfile copyWith({
+    String? id,
+    String? ownerUserId,
     String? artistName,
     String? artistType,
     String? city,
@@ -105,7 +111,8 @@ class UserProfile {
     List<String>? interests,
   }) {
     return UserProfile(
-      userId: userId,
+      id: id ?? this.id,
+      ownerUserId: ownerUserId ?? this.ownerUserId,
       artistName: artistName ?? this.artistName,
       artistType: artistType ?? this.artistType,
       city: city ?? this.city,

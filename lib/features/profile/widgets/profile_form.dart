@@ -10,15 +10,16 @@ import '../../../shared/widgets/pp_input.dart';
 /// Formulário reutilizável de perfil de artista
 /// Usado em complete-profile e edit-profile
 class ProfileForm extends StatefulWidget {
-  /// userId obrigatório. initialProfile pode ser null (novo perfil)
-  final String userId;
+  /// ownerUserId - dono do perfil
+  /// initialProfile pode ser null (novo perfil)
+  final String ownerUserId;
   final UserProfile? initialProfile;
   final void Function(UserProfile profile) onSubmit;
   final bool isLoading;
 
   const ProfileForm({
     super.key,
-    required this.userId,
+    required this.ownerUserId,
     this.initialProfile,
     required this.onSubmit,
     this.isLoading = false,
@@ -92,7 +93,8 @@ class _ProfileFormState extends State<ProfileForm> {
 
     final now = DateTime.now();
     final profile = UserProfile(
-      userId: widget.userId,
+      id: widget.initialProfile?.id ?? '',
+      ownerUserId: widget.ownerUserId,
       artistName: _artistNameController.text.trim(),
       artistType: _artistType,
       city: _cityController.text.trim(),

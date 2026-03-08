@@ -19,6 +19,21 @@ final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(authStateProvider).valueOrNull;
 });
 
-final userProfileProvider = StreamProvider.family<UserProfile?, String>((ref, userId) {
-  return ref.watch(profileServiceProvider).profileStream(userId);
+final userProfilesProvider =
+    StreamProvider.family<List<UserProfile>, String>((ref, userId) {
+  return ref.watch(profileServiceProvider).profilesStreamForUser(userId);
+});
+
+final mapLocationCountsProvider = FutureProvider.autoDispose<Map<String, int>>((ref) async {
+  return ref.read(profileServiceProvider).getLocationCountsByState();
+});
+
+final userProfileProvider =
+    StreamProvider.family<UserProfile?, String>((ref, profileId) {
+  return ref.watch(profileServiceProvider).profileStream(profileId);
+});
+
+final userAccountTypeProvider =
+    FutureProvider.autoDispose.family<String, String>((ref, userId) async {
+  return ref.read(profileServiceProvider).getUserAccountType(userId);
 });

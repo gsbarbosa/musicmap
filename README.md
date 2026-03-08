@@ -96,6 +96,10 @@ Exemplo de regras para desenvolvimento (ajuste para produção):
       }
     },
     "profiles": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "profiles_by_owner": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && auth.uid == $uid"
@@ -150,14 +154,17 @@ Os arquivos estarão em `build/web/`. Você pode fazer deploy no Firebase Hostin
 - `updatedAt`
 - `profileCompleted`
 
-### `profiles/{userId}`
-- `artistName`, `artistType`, `city`, `state`, `genre`
+### `profiles/{profileId}`
+- `ownerUserId`, `artistName`, `artistType`, `city`, `state`, `genre`
 - `instagram`, `contact`
 - `spotify`, `youtube`, `tiktok` (opcionais)
 - `bio` (opcional)
 - `interests` (array)
 - `earlyAccess`, `status`
 - `createdAt`, `updatedAt`
+
+### `profiles_by_owner/{userId}/{profileId}`
+- Índice: um usuário pode ter vários perfis (várias bandas/artistas)
 
 ## Próximos passos (Admin futuro)
 

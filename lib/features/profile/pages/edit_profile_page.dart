@@ -10,14 +10,15 @@ import '../services/profile_service.dart';
 import '../widgets/profile_form.dart';
 
 class EditProfilePage extends ConsumerWidget {
-  const EditProfilePage({super.key});
+  final String profileId;
+
+  const EditProfilePage({super.key, required this.profileId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    final profileAsync = user != null ? ref.watch(userProfileProvider(user.uid)) : null;
+    final profileAsync = ref.watch(userProfileProvider(profileId));
 
-    return profileAsync?.when(
+    return profileAsync.when(
       data: (profile) {
         if (profile == null) {
           return const Scaffold(
@@ -32,8 +33,6 @@ class EditProfilePage extends ConsumerWidget {
       error: (e, _) => Scaffold(
         body: Center(child: Text('Erro: $e')),
       ),
-    ) ?? const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
     );
   }
 }
@@ -114,7 +113,7 @@ class _EditProfileContentState extends ConsumerState<_EditProfileContent> {
               ],
               const SizedBox(height: 24),
               ProfileForm(
-                userId: widget.profile.userId,
+                ownerUserId: widget.profile.ownerUserId,
                 initialProfile: widget.profile,
                 onSubmit: _saveProfile,
                 isLoading: _isLoading,

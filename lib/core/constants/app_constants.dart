@@ -9,6 +9,7 @@ class AppConstants {
   // Firebase paths
   static const String usersPath = 'users';
   static const String profilesPath = 'profiles';
+  static const String profilesByOwnerPath = 'profiles_by_owner';
 
   // Valores de perfil
   static const String artistTypeSolo = 'artista solo';

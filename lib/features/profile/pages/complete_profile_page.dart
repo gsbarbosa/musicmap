@@ -77,7 +77,7 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
               const Center(child: PPLogo(showTagline: true, fontSize: 32)),
               const SizedBox(height: 48),
               Text(
-                'Complete seu perfil',
+                'Cadastrar banda/artista',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
@@ -105,7 +105,7 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
               ],
               const SizedBox(height: 32),
               ProfileForm(
-                userId: user.uid,
+                ownerUserId: user.uid,
                 onSubmit: _saveProfile,
                 isLoading: _isLoading,
               ),

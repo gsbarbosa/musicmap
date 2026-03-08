@@ -20,13 +20,14 @@ GoRouter createAppRouter(Ref ref) {
     initialLocation: '/',
     redirect: (context, state) async {
       final authState = ref.read(authStateProvider);
-      final user = authState.valueOrNull;
+      final user = authState.valueOrNull ??
+          ref.read(authServiceProvider).currentUser;
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/';
-      final isCompleteProfile = state.matchedLocation == '/complete-profile';
+      final isCompleteProfile = state.matchedLocation.startsWith('/complete-profile');
       final isDashboard = state.matchedLocation == '/dashboard';
-      final isEditProfile = state.matchedLocation == '/edit-profile';
+      final isEditProfile = state.matchedLocation.startsWith('/edit-profile');
 
       if (user == null) {
         if (isDashboard || isEditProfile || isCompleteProfile) {
@@ -35,14 +36,21 @@ GoRouter createAppRouter(Ref ref) {
         return null;
       }
 
-      final profile = await ref.read(profileServiceProvider).getProfile(user.uid);
+      final profiles =
+          await ref.read(profileServiceProvider).getProfilesForUser(user.uid);
 
-      if (profile == null && !isCompleteProfile && (isDashboard || isEditProfile)) {
+      if (profiles.isEmpty && !isCompleteProfile && (isDashboard || isEditProfile)) {
         return '/complete-profile';
       }
 
-      if (profile != null && isCompleteProfile) {
-        return '/dashboard';
+      if (isEditProfile) {
+        final profileId = state.pathParameters['profileId'];
+        if (profileId != null) {
+          final profile = await ref.read(profileServiceProvider).getProfile(profileId);
+          if (profile == null || profile.ownerUserId != user.uid) {
+            return '/dashboard';
+          }
+        }
       }
 
       return null;
@@ -69,8 +77,11 @@ GoRouter createAppRouter(Ref ref) {
         builder: (_, __) => const DashboardPage(),
       ),
       GoRoute(
-        path: '/edit-profile',
-        builder: (_, __) => const EditProfilePage(),
+        path: '/edit-profile/:profileId',
+        builder: (context, state) {
+          final profileId = state.pathParameters['profileId'] ?? '';
+          return EditProfilePage(profileId: profileId);
+        },
       ),
     ],
   );

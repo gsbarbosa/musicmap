@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/providers.dart';
-import '../../../shared/models/user_profile.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/models/user_profile.dart';
 import '../../../shared/widgets/page_container.dart';
 import '../../../shared/widgets/pp_badge.dart';
 import '../../../shared/widgets/pp_button.dart';
 import '../../../shared/widgets/pp_card.dart';
 import '../../../shared/widgets/pp_logo.dart';
+import '../widgets/brazil_map_widget.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -17,16 +18,16 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final profileAsync = user != null ? ref.watch(userProfileProvider(user.uid)) : null;
+    final profilesAsync = user != null ? ref.watch(userProfilesProvider(user.uid)) : null;
 
-    return profileAsync?.when(
-      data: (profile) {
-        if (profile == null) {
+    return profilesAsync?.when(
+      data: (profiles) {
+        if (profiles.isEmpty) {
           return const Scaffold(
-            body: Center(child: Text('Carregando perfil...')),
+            body: Center(child: Text('Nenhum perfil encontrado')),
           );
         }
-        return _DashboardContent(profile: profile, userEmail: user?.email ?? '');
+        return _DashboardContent(userId: user!.uid, profiles: profiles);
       },
       loading: () => Scaffold(
         body: Center(
@@ -52,23 +53,31 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-class _DashboardContent extends ConsumerWidget {
-  final UserProfile profile;
-  final String userEmail;
+class _DashboardContent extends ConsumerStatefulWidget {
+  final String userId;
+  final List<UserProfile> profiles;
 
-  const _DashboardContent({
-    required this.profile,
-    required this.userEmail,
-  });
+  const _DashboardContent({required this.userId, required this.profiles});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends ConsumerState<_DashboardContent> {
+  int _selectedIndex = 0;
+
+  UserProfile get _selectedProfile => widget.profiles[_selectedIndex];
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
             _buildHeader(context),
+            if (widget.profiles.length > 1) _buildProfileSelector(context),
             _buildMainContent(context),
+            _buildMapSection(context, ref),
             _buildStatusCard(context),
             _buildProfileSummary(context),
             _buildActions(context, ref),
@@ -93,6 +102,61 @@ class _DashboardContent extends ConsumerWidget {
     );
   }
 
+  Widget _buildProfileSelector(BuildContext context) {
+    final isBandAccount = ref.watch(userAccountTypeProvider(widget.userId)).valueOrNull == 'band';
+    if (isBandAccount) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: PageContainer(
+        maxWidth: 600,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Seus perfis',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(widget.profiles.length, (i) {
+                final p = widget.profiles[i];
+                final selected = _selectedIndex == i;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedIndex = i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary.withOpacity(0.2)
+                          : AppColors.surfaceSecondary,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: selected ? AppColors.primary : AppColors.border,
+                      ),
+                    ),
+                    child: Text(
+                      p.artistName,
+                      style: TextStyle(
+                        fontWeight: selected ? FontWeight.w600 : null,
+                        color: selected ? AppColors.primary : null,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMainContent(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -105,7 +169,7 @@ class _DashboardContent extends ConsumerWidget {
             const PPBadge(label: 'Early Access', variant: PPBadgeVariant.primary),
             const SizedBox(height: 24),
             Text(
-              profile.artistName,
+              _selectedProfile.artistName,
               style: Theme.of(context).textTheme.displaySmall,
             ),
             const SizedBox(height: 24),
@@ -124,6 +188,39 @@ class _DashboardContent extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppColors.textSecondary,
                   ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapSection(BuildContext context, WidgetRef ref) {
+    final countsAsync = ref.watch(mapLocationCountsProvider);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: PageContainer(
+        maxWidth: 700,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 24),
+            countsAsync.when(
+              data: (counts) => BrazilMapWidget(stateCounts: counts),
+              loading: () => Container(
+                height: 320,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSecondary,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
             ),
           ],
         ),
@@ -177,6 +274,7 @@ class _DashboardContent extends ConsumerWidget {
   }
 
   Widget _buildProfileSummary(BuildContext context) {
+    final profile = _selectedProfile;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -234,33 +332,49 @@ class _DashboardContent extends ConsumerWidget {
   }
 
   Widget _buildActions(BuildContext context, WidgetRef ref) {
+    final isBandAccount = ref.watch(userAccountTypeProvider(widget.userId)).valueOrNull == 'band';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       child: PageContainer(
         maxWidth: 600,
-        child: Row(
+        child: Column(
           children: [
-            Expanded(
-              child: PPButton(
-                label: 'Editar perfil',
-                icon: Icons.edit_rounded,
-                onPressed: () => context.push('/edit-profile'),
-                variant: PPButtonVariant.primary,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: PPButton(
+                    label: 'Editar perfil',
+                    icon: Icons.edit_rounded,
+                    onPressed: () => context.push('/edit-profile/${_selectedProfile.id}'),
+                    variant: PPButtonVariant.primary,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: PPButton(
+                    label: 'Sair',
+                    icon: Icons.logout_rounded,
+                    onPressed: () async {
+                      await ref.read(authServiceProvider).signOut();
+                      if (context.mounted) context.go('/');
+                    },
+                    variant: PPButtonVariant.outline,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: PPButton(
-                label: 'Sair',
-                icon: Icons.logout_rounded,
-                onPressed: () async {
-                  await ref.read(authServiceProvider).signOut();
-                  if (context.mounted) context.go('/');
-                },
+            if (!isBandAccount) ...[
+              const SizedBox(height: 16),
+              PPButton(
+                label: 'Adicionar banda/artista',
+                icon: Icons.add_rounded,
+                onPressed: () => context.push('/complete-profile'),
                 variant: PPButtonVariant.outline,
+                fullWidth: true,
               ),
-            ),
+            ],
           ],
         ),
       ),
