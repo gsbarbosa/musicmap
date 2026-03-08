@@ -1,5 +1,11 @@
 {
   "rules": {
+    "stats": {
+      "totalProfiles": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",

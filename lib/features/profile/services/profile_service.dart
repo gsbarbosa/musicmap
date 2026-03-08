@@ -23,6 +23,11 @@ class ProfileService {
           .child(profile.ownerUserId)
           .child(profileId)
           .set(true);
+      try {
+        await _db.child(AppConstants.totalProfilesPath).set(ServerValue.increment(1));
+      } catch (_) {
+        // Ignora falha no contador (ex: regras não deployadas); perfil é salvo
+      }
     }
 
     return profileId;
@@ -132,6 +137,16 @@ class ProfileService {
     });
   }
 
+  /// Retorna o total de bandas/artistas cadastradas (apenas dados reais do banco)
+  /// Lê de stats/totalProfiles (público) para exibir na landing para visitantes
+  Future<int> getTotalProfileCount() async {
+    final snapshot = await _db.child(AppConstants.totalProfilesPath).get();
+    if (!snapshot.exists || snapshot.value == null) return 0;
+    final v = snapshot.value;
+    if (v is num) return v.toInt();
+    return 0;
+  }
+
   /// Retorna contagem de bandas/artistas por estado (para o mapa)
   Future<Map<String, int>> getLocationCountsByState() async {
     final snapshot = await _db.child(AppConstants.profilesPath).get();
@@ -156,16 +171,21 @@ class ProfileService {
     String userId,
     String email, {
     String accountType = 'person',
+    String? representationDeclarationAcceptedAt,
   }) async {
     final ref = _db.child(AppConstants.usersPath).child(userId);
     final now = DateTime.now().toIso8601String();
-    await ref.set({
+    final data = <String, dynamic>{
       'email': email,
       'accountType': accountType,
       'createdAt': now,
       'updatedAt': now,
       'profileCompleted': false,
-    });
+    };
+    if (representationDeclarationAcceptedAt != null) {
+      data['representationDeclarationAcceptedAt'] = representationDeclarationAcceptedAt;
+    }
+    await ref.set(data);
   }
 
   /// Retorna o tipo de conta do usuário

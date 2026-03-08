@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/page_container.dart';
 import '../../../shared/widgets/pp_badge.dart';
@@ -10,16 +12,18 @@ import '../../../shared/widgets/pp_card.dart';
 import '../../../shared/widgets/pp_logo.dart';
 
 /// Landing page - ponto de entrada para novos visitantes
-class LandingPage extends StatelessWidget {
+class LandingPage extends ConsumerWidget {
   const LandingPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final totalAsync = ref.watch(totalProfileCountProvider);
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHero(context),
+            _buildHero(context, ref, totalAsync),
             _buildWhatIs(context),
             _buildBenefits(context),
             _buildCta(context),
@@ -29,7 +33,7 @@ class LandingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHero(BuildContext context) {
+  Widget _buildHero(BuildContext context, WidgetRef ref, AsyncValue<int> totalAsync) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
@@ -39,7 +43,13 @@ class LandingPage extends StatelessWidget {
         child: Column(
           children: [
             const PPLogo(showTagline: true, fontSize: 48),
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
+            totalAsync.when(
+              data: (total) => _buildVagasCounter(context, total),
+              loading: () => _buildVagasCounter(context, null),
+              error: (_, __) => _buildVagasCounter(context, null),
+            ),
+            const SizedBox(height: 32),
             Text(
               'Entre agora para a base inicial do ${AppConstants.appName}',
               textAlign: TextAlign.center,
@@ -82,6 +92,62 @@ class LandingPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVagasCounter(BuildContext context, int? total) {
+    final realCount = total ?? 0;
+    final count = AppConstants.earlyAccessReserved + realCount;
+    final limit = AppConstants.earlyAccessLimit;
+    final remaining = (limit - count).clamp(0, limit);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Apenas $limit vagas para o pré-lançamento',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '$count',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              Text(
+                ' / $limit',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '• $remaining vagas restantes',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

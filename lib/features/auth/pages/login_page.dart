@@ -19,6 +19,7 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -28,6 +29,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -41,6 +43,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (!(_formKey.currentState?.validate() ?? false)) {
       setState(() => _isLoading = false);
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
       return;
     }
 
@@ -101,6 +108,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
+          controller: _scrollController,
           child: PageContainer(
             maxWidth: 420,
             child: Column(

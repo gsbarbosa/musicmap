@@ -47,8 +47,15 @@ class _EditProfileContent extends ConsumerStatefulWidget {
 }
 
 class _EditProfileContentState extends ConsumerState<_EditProfileContent> {
+  final _scrollController = ScrollController();
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _saveProfile(UserProfile profile) async {
     setState(() {
@@ -88,6 +95,7 @@ class _EditProfileContentState extends ConsumerState<_EditProfileContent> {
         title: const Text('Editar perfil'),
       ),
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: PageContainer(
           maxWidth: 600,
           child: Column(
@@ -117,6 +125,7 @@ class _EditProfileContentState extends ConsumerState<_EditProfileContent> {
                 initialProfile: widget.profile,
                 onSubmit: _saveProfile,
                 isLoading: _isLoading,
+                scrollController: _scrollController,
               ),
             ],
           ),

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../constants/map_test_data.dart';
 import '../../features/auth/services/auth_service.dart';
 import '../../features/profile/services/profile_service.dart';
 import '../../shared/models/user_profile.dart';
@@ -24,8 +25,19 @@ final userProfilesProvider =
   return ref.watch(profileServiceProvider).profilesStreamForUser(userId);
 });
 
+final totalProfileCountProvider = FutureProvider.autoDispose<int>((ref) async {
+  return ref.read(profileServiceProvider).getTotalProfileCount();
+});
+
 final mapLocationCountsProvider = FutureProvider.autoDispose<Map<String, int>>((ref) async {
-  return ref.read(profileServiceProvider).getLocationCountsByState();
+  final realCounts = await ref.read(profileServiceProvider).getLocationCountsByState();
+  if (!MapTestData.enableMapTestPins) return realCounts;
+
+  final merged = Map<String, int>.from(realCounts);
+  for (final e in MapTestData.testStateCounts.entries) {
+    merged[e.key] = (merged[e.key] ?? 0) + e.value;
+  }
+  return merged;
 });
 
 final userProfileProvider =
