@@ -18,8 +18,15 @@ class CompleteProfilePage extends ConsumerStatefulWidget {
 }
 
 class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
+  final _scrollController = ScrollController();
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _saveProfile(UserProfile profile) async {
     setState(() {
@@ -68,6 +75,7 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
 
     return Scaffold(
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: PageContainer(
           maxWidth: 600,
           child: Column(
@@ -108,6 +116,7 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
                 ownerUserId: user.uid,
                 onSubmit: _saveProfile,
                 isLoading: _isLoading,
+                scrollController: _scrollController,
               ),
             ],
           ),

@@ -8,7 +8,9 @@
     },
     "profiles": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      "$profileId": {
+        ".write": "auth != null && newData.child('ownerUserId').val() === auth.uid"
+      }
     },
     "profiles_by_owner": {
       "$uid": {

@@ -21,6 +21,7 @@ class UserProfile {
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? representationDeclarationAcceptedAt;
 
   const UserProfile({
     required this.id,
@@ -41,6 +42,7 @@ class UserProfile {
     this.status = 'active',
     required this.createdAt,
     required this.updatedAt,
+    this.representationDeclarationAcceptedAt,
   });
 
   factory UserProfile.fromMap(String profileId, Map<String, dynamic> map, {String? ownerUserIdOverride}) {
@@ -69,6 +71,9 @@ class UserProfile {
       updatedAt: map['updatedAt'] != null
           ? DateTime.parse(map['updatedAt'] as String)
           : DateTime.now(),
+      representationDeclarationAcceptedAt: map['representationDeclarationAcceptedAt'] != null
+          ? DateTime.parse(map['representationDeclarationAcceptedAt'] as String)
+          : null,
     );
   }
 
@@ -91,6 +96,9 @@ class UserProfile {
       'status': status,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      if (representationDeclarationAcceptedAt != null)
+        'representationDeclarationAcceptedAt':
+            representationDeclarationAcceptedAt!.toIso8601String(),
     };
   }
 
@@ -109,6 +117,7 @@ class UserProfile {
     String? tiktok,
     String? bio,
     List<String>? interests,
+    DateTime? representationDeclarationAcceptedAt,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -125,6 +134,8 @@ class UserProfile {
       tiktok: tiktok ?? this.tiktok,
       bio: bio ?? this.bio,
       interests: interests ?? this.interests,
+      representationDeclarationAcceptedAt:
+          representationDeclarationAcceptedAt ?? this.representationDeclarationAcceptedAt,
       earlyAccess: earlyAccess,
       status: status,
       createdAt: createdAt,

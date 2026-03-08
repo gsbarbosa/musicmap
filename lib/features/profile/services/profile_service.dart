@@ -156,16 +156,21 @@ class ProfileService {
     String userId,
     String email, {
     String accountType = 'person',
+    String? representationDeclarationAcceptedAt,
   }) async {
     final ref = _db.child(AppConstants.usersPath).child(userId);
     final now = DateTime.now().toIso8601String();
-    await ref.set({
+    final data = <String, dynamic>{
       'email': email,
       'accountType': accountType,
       'createdAt': now,
       'updatedAt': now,
       'profileCompleted': false,
-    });
+    };
+    if (representationDeclarationAcceptedAt != null) {
+      data['representationDeclarationAcceptedAt'] = representationDeclarationAcceptedAt;
+    }
+    await ref.set(data);
   }
 
   /// Retorna o tipo de conta do usuário

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/data/brazilian_cities.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/widgets/pp_button.dart';
+import '../../../shared/widgets/pp_dropdown.dart';
 import '../../../shared/widgets/pp_input.dart';
 
 /// Formulário reutilizável de perfil de artista
@@ -12,10 +14,12 @@ import '../../../shared/widgets/pp_input.dart';
 class ProfileForm extends StatefulWidget {
   /// ownerUserId - dono do perfil
   /// initialProfile pode ser null (novo perfil)
+  /// scrollController - para rolar ao topo quando houver erro de validação
   final String ownerUserId;
   final UserProfile? initialProfile;
   final void Function(UserProfile profile) onSubmit;
   final bool isLoading;
+  final ScrollController? scrollController;
 
   const ProfileForm({
     super.key,
@@ -23,6 +27,7 @@ class ProfileForm extends StatefulWidget {
     this.initialProfile,
     required this.onSubmit,
     this.isLoading = false,
+    this.scrollController,
   });
 
   @override
@@ -43,7 +48,11 @@ class _ProfileFormState extends State<ProfileForm> {
   late TextEditingController _bioController;
 
   String _artistType = AppConstants.artistTypeSolo;
+  String? _selectedState;
+  String? _selectedCity;
+  String? _selectedGenre;
   List<String> _interests = [];
+  bool _declarationAccepted = false;
 
   @override
   void initState() {
@@ -53,6 +62,15 @@ class _ProfileFormState extends State<ProfileForm> {
     _cityController = TextEditingController(text: p?.city ?? '');
     _stateController = TextEditingController(text: p?.state ?? '');
     _genreController = TextEditingController(text: p?.genre ?? '');
+    _selectedState = p?.state?.trim().isNotEmpty == true ? p!.state.toUpperCase() : null;
+    _selectedCity = p?.city?.trim().isNotEmpty == true ? p!.city : null;
+    if (_selectedCity != null &&
+        _selectedState != null &&
+        !(brazilianCitiesByState[_selectedState] ?? []).contains(_selectedCity)) {
+      _cityController.text = _selectedCity!;
+      _selectedCity = otherCityValue;
+    }
+    _selectedGenre = p?.genre?.trim().isNotEmpty == true ? p!.genre : null;
     _instagramController = TextEditingController(text: p?.instagram ?? '');
     _contactController = TextEditingController(text: p?.contact ?? '');
     _spotifyController = TextEditingController(text: p?.spotify ?? '');
@@ -78,6 +96,18 @@ class _ProfileFormState extends State<ProfileForm> {
     super.dispose();
   }
 
+  List<DropdownMenuItem<String>> _buildCityDropdownItems() {
+    if (_selectedState == null) {
+      return [const DropdownMenuItem(value: null, child: Text('Selecione o estado primeiro'))];
+    }
+    final cities = brazilianCitiesByState[_selectedState] ?? [];
+    return [
+      const DropdownMenuItem(value: null, child: Text('Selecione...')),
+      ...cities.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+      const DropdownMenuItem(value: otherCityValue, child: Text('Outra (informar)')),
+    ];
+  }
+
   void _toggleInterest(String interest) {
     setState(() {
       if (_interests.contains(interest)) {
@@ -88,8 +118,33 @@ class _ProfileFormState extends State<ProfileForm> {
     });
   }
 
+  void _scrollToTop() {
+    widget.scrollController?.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      _scrollToTop();
+      return;
+    }
+    final isNewProfile = widget.initialProfile == null;
+    if (isNewProfile && !_declarationAccepted) {
+      _scrollToTop();
+      return;
+    }
+
+    final city = _selectedCity == otherCityValue
+        ? _cityController.text.trim()
+        : (_selectedCity ?? '');
+    final state = _selectedState ?? _stateController.text.trim();
+    if (city.isEmpty || state.isEmpty) {
+      _scrollToTop();
+      return;
+    }
 
     final now = DateTime.now();
     final profile = UserProfile(
@@ -97,9 +152,9 @@ class _ProfileFormState extends State<ProfileForm> {
       ownerUserId: widget.ownerUserId,
       artistName: _artistNameController.text.trim(),
       artistType: _artistType,
-      city: _cityController.text.trim(),
-      state: _stateController.text.trim(),
-      genre: _genreController.text.trim(),
+      city: city,
+      state: state,
+      genre: _selectedGenre ?? _genreController.text.trim(),
       instagram: _instagramController.text.trim(),
       contact: _contactController.text.trim(),
       spotify: _spotifyController.text.trim().isEmpty ? null : _spotifyController.text.trim(),
@@ -111,6 +166,8 @@ class _ProfileFormState extends State<ProfileForm> {
       status: 'active',
       createdAt: widget.initialProfile?.createdAt ?? now,
       updatedAt: now,
+      representationDeclarationAcceptedAt:
+          isNewProfile ? now : widget.initialProfile?.representationDeclarationAcceptedAt,
     );
 
     widget.onSubmit(profile);
@@ -132,32 +189,67 @@ class _ProfileFormState extends State<ProfileForm> {
           const SizedBox(height: 20),
           _buildArtistTypeSelector(),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: PPInput(
-                  label: 'Cidade *',
-                  controller: _cityController,
-                  validator: (v) => Validators.required(v, 'Cidade'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: PPInput(
-                  label: 'Estado *',
-                  hint: 'UF',
-                  controller: _stateController,
-                  validator: (v) => Validators.required(v, 'Estado'),
-                ),
+          PPDropdown<String>(
+            label: 'Estado *',
+            hint: 'Selecione o estado',
+            value: _selectedState,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Selecione...')),
+              ...AppConstants.brazilianStates.map(
+                (e) => DropdownMenuItem(value: e.key, child: Text('${e.key} - ${e.value}')),
               ),
             ],
+            onChanged: (v) {
+              setState(() {
+                _selectedState = v;
+                _selectedCity = null;
+                _cityController.clear();
+              });
+            },
+            validator: (v) => v == null || v.isEmpty ? 'Selecione o estado' : null,
           ),
           const SizedBox(height: 20),
-          PPInput(
+          PPDropdown<String>(
+            label: 'Cidade *',
+            hint: _selectedState == null ? 'Selecione o estado primeiro' : 'Selecione a cidade',
+            value: _selectedCity,
+            items: _buildCityDropdownItems(),
+            onChanged: _selectedState == null
+                ? null
+                : (v) => setState(() => _selectedCity = v),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Selecione a cidade';
+              if (v == otherCityValue && _cityController.text.trim().isEmpty) {
+                return 'Informe o nome da cidade';
+              }
+              return null;
+            },
+          ),
+          if (_selectedCity == otherCityValue) ...[
+            const SizedBox(height: 16),
+            PPInput(
+              label: 'Nome da cidade *',
+              hint: 'Digite sua cidade',
+              controller: _cityController,
+              validator: (v) => _selectedCity == otherCityValue && (v == null || v.trim().isEmpty)
+                  ? 'Informe o nome da cidade'
+                  : null,
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+          const SizedBox(height: 20),
+          PPDropdown<String>(
             label: 'Gênero musical principal *',
-            hint: 'Ex: Rock, MPB, Indie, Eletrônica',
-            controller: _genreController,
-            validator: (v) => Validators.required(v, 'Gênero'),
+            hint: 'Selecione o gênero',
+            value: _selectedGenre,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Selecione...')),
+              ...AppConstants.musicGenres.map(
+                (g) => DropdownMenuItem(value: g, child: Text(g)),
+              ),
+            ],
+            onChanged: (v) => setState(() => _selectedGenre = v),
+            validator: (v) => v == null || v.isEmpty ? 'Selecione o gênero' : null,
           ),
           const SizedBox(height: 20),
           PPInput(
@@ -229,6 +321,10 @@ class _ProfileFormState extends State<ProfileForm> {
               );
             }).toList(),
           ),
+          if (widget.initialProfile == null) ...[
+            const SizedBox(height: 24),
+            _buildDeclarationCheckbox(context),
+          ],
           const SizedBox(height: 40),
           PPButton(
             label: 'Salvar perfil',
@@ -237,6 +333,51 @@ class _ProfileFormState extends State<ProfileForm> {
             fullWidth: true,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDeclarationCheckbox(BuildContext context) {
+    return InkWell(
+      onTap: () => setState(() => _declarationAccepted = !_declarationAccepted),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceSecondary,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _declarationAccepted ? AppColors.primary : AppColors.border,
+            width: _declarationAccepted ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: _declarationAccepted,
+                onChanged: (v) => setState(() => _declarationAccepted = v ?? false),
+                fillColor: WidgetStateProperty.resolveWith((_) =>
+                    _declarationAccepted ? AppColors.primary : AppColors.border),
+                checkColor: AppColors.backgroundPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                AppConstants.representationDeclaration,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

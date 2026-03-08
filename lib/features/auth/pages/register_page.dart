@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/providers/providers.dart';
@@ -21,21 +22,69 @@ enum _AccountType { band, person }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   _AccountType _accountType = _AccountType.band;
+  bool _declarationAccepted = false;
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   String? _errorMessage;
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Widget _buildDeclarationCheckbox(BuildContext context) {
+    return InkWell(
+      onTap: () => setState(() => _declarationAccepted = !_declarationAccepted),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceSecondary,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _declarationAccepted ? AppColors.primary : AppColors.border,
+            width: _declarationAccepted ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: _declarationAccepted,
+                onChanged: (v) => setState(() => _declarationAccepted = v ?? false),
+                fillColor: WidgetStateProperty.resolveWith((_) =>
+                    _declarationAccepted ? AppColors.primary : AppColors.border),
+                checkColor: AppColors.backgroundPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                AppConstants.representationDeclaration,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String? _confirmPassword(String? value) {
@@ -51,8 +100,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       _isLoading = true;
     });
 
-    if (!(_formKey.currentState?.validate() ?? false)) {
+    if (!(_formKey.currentState?.validate() ?? false) || !_declarationAccepted) {
       setState(() => _isLoading = false);
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
       return;
     }
 
@@ -68,6 +122,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           cred.user!.uid,
           cred.user!.email ?? '',
           accountType: _accountType == _AccountType.band ? 'band' : 'person',
+          representationDeclarationAcceptedAt: DateTime.now().toIso8601String(),
         );
       }
       if (mounted) context.go('/complete-profile');
@@ -102,6 +157,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           cred.user!.uid,
           cred.user!.email ?? '',
           accountType: 'person', // Google = email pessoal, assume gestor
+          // Declaração será coletada no complete-profile
         );
       }
       if (mounted) context.go('/dashboard');
@@ -122,6 +178,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
+          controller: _scrollController,
           child: PageContainer(
             maxWidth: 420,
             child: Column(
@@ -280,6 +337,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         validator: _confirmPassword,
                         onChanged: (_) => setState(() => _errorMessage = null),
                       ),
+                      const SizedBox(height: 24),
+                      _buildDeclarationCheckbox(context),
                       if (_errorMessage != null) ...[
                         const SizedBox(height: 16),
                         Container(
