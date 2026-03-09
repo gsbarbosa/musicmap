@@ -1,6 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/profile_lookup.dart';
 import '../../../../shared/models/user_profile.dart';
 
 /// Serviço de perfil com Firebase Realtime Database
@@ -8,10 +9,44 @@ import '../../../../shared/models/user_profile.dart';
 class ProfileService {
   final DatabaseReference _db = FirebaseDatabase.instance.ref();
 
+  /// Verifica se o limite de vagas do pré-lançamento foi atingido
+  Future<bool> isAtEarlyAccessLimit() async {
+    final total = await getTotalProfileCount();
+    final count = AppConstants.earlyAccessReserved + total;
+    return count >= AppConstants.earlyAccessLimit;
+  }
+
+  /// Busca perfil duplicado por nome + Instagram (normalizados)
+  /// Retorna o perfil existente se encontrar, null caso contrário
+  Future<UserProfile?> findDuplicateProfile(String artistName, String instagram) async {
+    final key = normalizeProfileLookupKey(artistName, instagram);
+    final snapshot = await _db.child(AppConstants.profilesPath).get();
+    if (!snapshot.exists || snapshot.value == null) return null;
+    final data = snapshot.value as Map<dynamic, dynamic>;
+    for (final entry in data.entries) {
+      final map = Map<String, dynamic>.from(entry.value as Map);
+      final existingKey = normalizeProfileLookupKey(
+        map['artistName']?.toString() ?? '',
+        map['instagram']?.toString() ?? '',
+      );
+      if (existingKey == key) {
+        return UserProfile.fromMap(entry.key as String, map);
+      }
+    }
+    return null;
+  }
+
   /// Cria ou atualiza perfil
   /// Se profile.id estiver vazio, cria novo
+  /// Lança StateError se limite de vagas atingido (apenas para novo perfil)
   Future<String> saveProfile(UserProfile profile) async {
     final isNew = profile.id.isEmpty;
+    if (isNew) {
+      final atLimit = await isAtEarlyAccessLimit();
+      if (atLimit) {
+        throw StateError('early_access_limit_reached');
+      }
+    }
     final profileId = isNew ? _db.child(AppConstants.profilesPath).push().key! : profile.id;
 
     final profileData = profile.toMap();

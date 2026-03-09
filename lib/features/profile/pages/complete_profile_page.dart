@@ -7,7 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/widgets/page_container.dart';
 import '../../../shared/widgets/pp_logo.dart';
-import '../services/profile_service.dart';
+import '../widgets/duplicate_profile_dialog.dart';
 import '../widgets/profile_form.dart';
 
 class CompleteProfilePage extends ConsumerStatefulWidget {
@@ -34,8 +34,42 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
       _errorMessage = null;
     });
 
+    final profileService = ref.read(profileServiceProvider);
+
     try {
-      final profileService = ref.read(profileServiceProvider);
+      final isNew = profile.id.isEmpty;
+      if (isNew) {
+        final atLimit = await profileService.isAtEarlyAccessLimit();
+        if (atLimit) {
+          setState(() {
+            _errorMessage = 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!';
+            _isLoading = false;
+          });
+          return;
+        }
+        final duplicate = await profileService.findDuplicateProfile(
+          profile.artistName,
+          profile.instagram,
+        );
+        if (duplicate != null && mounted) {
+          setState(() => _isLoading = false);
+          await DuplicateProfileDialog.show(
+            context,
+            artistName: profile.artistName,
+            instagram: profile.instagram,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Se você é integrante ou representante oficial, entre em contato conosco para reivindicar o perfil.'),
+                backgroundColor: AppColors.surfaceSecondary,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
       await profileService.saveProfile(profile);
       final user = ref.read(currentUserProvider);
       if (user != null) {
@@ -58,7 +92,9 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Erro ao salvar perfil. Tente novamente.';
+        _errorMessage = e.toString().contains('early_access_limit_reached')
+            ? 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!'
+            : 'Erro ao salvar perfil. Tente novamente.';
         _isLoading = false;
       });
     }

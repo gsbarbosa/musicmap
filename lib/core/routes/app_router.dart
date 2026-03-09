@@ -6,6 +6,8 @@ import '../../features/auth/pages/login_page.dart';
 import '../../features/auth/pages/register_page.dart';
 import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/landing/pages/landing_page.dart';
+import '../../features/legal/pages/privacy_page.dart';
+import '../../features/legal/pages/terms_page.dart';
 import '../../features/profile/pages/complete_profile_page.dart';
 import '../../features/profile/pages/edit_profile_page.dart';
 import '../providers/providers.dart';
@@ -82,6 +84,14 @@ GoRouter createAppRouter(Ref ref) {
           final profileId = state.pathParameters['profileId'] ?? '';
           return EditProfilePage(profileId: profileId);
         },
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (_, __) => const TermsPage(),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (_, __) => const PrivacyPage(),
       ),
     ],
   );

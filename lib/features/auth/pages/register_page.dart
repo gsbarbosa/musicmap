@@ -87,6 +87,55 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
+  Widget _buildLegalLinks(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'Ao criar conta você concorda com os ',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+        ),
+        GestureDetector(
+          onTap: () => context.go('/terms'),
+          child: const Text(
+            'Termos de Uso',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+        Text(
+          ' e ',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+        ),
+        GestureDetector(
+          onTap: () => context.go('/privacy'),
+          child: const Text(
+            'Política de Privacidade',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+        Text(
+          '.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+        ),
+      ],
+    );
+  }
+
   String? _confirmPassword(String? value) {
     if (value != _passwordController.text) {
       return 'As senhas não coincidem';
@@ -99,6 +148,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       _errorMessage = null;
       _isLoading = true;
     });
+
+    try {
+      final atLimit = await ref.read(profileServiceProvider).isAtEarlyAccessLimit();
+      if (atLimit) {
+        setState(() {
+          _errorMessage = 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!';
+          _isLoading = false;
+        });
+        return;
+      }
+    } catch (_) {
+      // Continua se falhar ao verificar limite
+    }
 
     if (!(_formKey.currentState?.validate() ?? false) || !_declarationAccepted) {
       setState(() => _isLoading = false);
@@ -145,6 +207,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     });
 
     try {
+      final atLimit = await ref.read(profileServiceProvider).isAtEarlyAccessLimit();
+      if (atLimit) {
+        setState(() {
+          _errorMessage = 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!';
+          _isGoogleLoading = false;
+        });
+        return;
+      }
       final auth = ref.read(authServiceProvider);
       final profileService = ref.read(profileServiceProvider);
       final cred = await auth.signInWithGoogle();
@@ -339,6 +409,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       ),
                       const SizedBox(height: 24),
                       _buildDeclarationCheckbox(context),
+                      const SizedBox(height: 16),
+                      _buildLegalLinks(context),
                       if (_errorMessage != null) ...[
                         const SizedBox(height: 16),
                         Container(

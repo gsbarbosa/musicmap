@@ -26,7 +26,8 @@ class LandingPage extends ConsumerWidget {
             _buildHero(context, ref, totalAsync),
             _buildWhatIs(context),
             _buildBenefits(context),
-            _buildCta(context),
+            _buildCta(context, totalAsync),
+            _buildFooter(context),
           ],
         ),
       ),
@@ -71,11 +72,18 @@ class LandingPage extends ConsumerWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final isNarrow = constraints.maxWidth < 400;
+                final atLimit = totalAsync.valueOrNull != null && _isAtLimit(totalAsync.valueOrNull);
                 return isNarrow
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          PPButton(label: 'Criar perfil', icon: Icons.person_add_rounded, onPressed: () => context.go('/register'), variant: PPButtonVariant.primary, fullWidth: true),
+                          PPButton(
+                            label: atLimit ? 'Vagas esgotadas' : 'Criar perfil',
+                            icon: Icons.person_add_rounded,
+                            onPressed: atLimit ? null : () => context.go('/register'),
+                            variant: PPButtonVariant.primary,
+                            fullWidth: true,
+                          ),
                           const SizedBox(height: 12),
                           PPButton(label: 'Entrar', onPressed: () => context.go('/login'), variant: PPButtonVariant.outline, fullWidth: true),
                         ],
@@ -83,7 +91,13 @@ class LandingPage extends ConsumerWidget {
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          PPButton(label: 'Criar perfil', icon: Icons.person_add_rounded, onPressed: () => context.go('/register'), variant: PPButtonVariant.primary, fullWidth: false),
+                          PPButton(
+                            label: atLimit ? 'Vagas esgotadas' : 'Criar perfil',
+                            icon: Icons.person_add_rounded,
+                            onPressed: atLimit ? null : () => context.go('/register'),
+                            variant: PPButtonVariant.primary,
+                            fullWidth: false,
+                          ),
                           const SizedBox(width: 16),
                           PPButton(label: 'Entrar', onPressed: () => context.go('/login'), variant: PPButtonVariant.outline, fullWidth: false),
                         ],
@@ -94,6 +108,12 @@ class LandingPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  bool _isAtLimit(int? total) {
+    final realCount = total ?? 0;
+    final count = AppConstants.earlyAccessReserved + realCount;
+    return count >= AppConstants.earlyAccessLimit;
   }
 
   Widget _buildVagasCounter(BuildContext context, int? total) {
@@ -229,7 +249,48 @@ class LandingPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildCta(BuildContext context) {
+  Widget _buildFooter(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      child: Center(
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 8,
+          children: [
+            GestureDetector(
+              onTap: () => context.go('/terms'),
+              child: Text(
+                'Termos de Uso',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      decoration: TextDecoration.underline,
+                    ),
+              ),
+            ),
+            Text(
+              '•',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            GestureDetector(
+              onTap: () => context.go('/privacy'),
+              child: Text(
+                'Política de Privacidade',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      decoration: TextDecoration.underline,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCta(BuildContext context, AsyncValue<int> totalAsync) {
+    final atLimit = totalAsync.valueOrNull != null && _isAtLimit(totalAsync.valueOrNull);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
@@ -241,14 +302,14 @@ class LandingPage extends ConsumerWidget {
             const PPLogo(showTagline: false, fontSize: 36),
             const SizedBox(height: 24),
             Text(
-              'Garanta seu acesso antecipado',
+              atLimit ? 'Vagas esgotadas' : 'Garanta seu acesso antecipado',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 24),
             PPButton(
-              label: 'Criar perfil',
+              label: atLimit ? 'Vagas esgotadas' : 'Criar perfil',
               icon: Icons.arrow_forward_rounded,
-              onPressed: () => context.go('/register'),
+              onPressed: atLimit ? null : () => context.go('/register'),
               variant: PPButtonVariant.primary,
               fullWidth: true,
             ),
