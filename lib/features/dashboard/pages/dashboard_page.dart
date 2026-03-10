@@ -332,49 +332,33 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
   }
 
   Widget _buildActions(BuildContext context, WidgetRef ref) {
-    final isBandAccount = ref.watch(userAccountTypeProvider(widget.userId)).valueOrNull == 'band';
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       child: PageContainer(
         maxWidth: 600,
-        child: Column(
+        child: Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: PPButton(
-                    label: 'Editar perfil',
-                    icon: Icons.edit_rounded,
-                    onPressed: () => context.push('/edit-profile/${_selectedProfile.id}'),
-                    variant: PPButtonVariant.primary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: PPButton(
-                    label: 'Sair',
-                    icon: Icons.logout_rounded,
-                    onPressed: () async {
-                      await ref.read(authServiceProvider).signOut();
-                      if (context.mounted) context.go('/');
-                    },
-                    variant: PPButtonVariant.outline,
-                  ),
-                ),
-              ],
-            ),
-            if (!isBandAccount) ...[
-              const SizedBox(height: 16),
-              PPButton(
-                label: 'Adicionar banda/artista',
-                icon: Icons.add_rounded,
-                onPressed: () => context.push('/complete-profile'),
-                variant: PPButtonVariant.outline,
-                fullWidth: true,
+            Expanded(
+              child: PPButton(
+                label: 'Editar perfil',
+                icon: Icons.edit_rounded,
+                onPressed: () => context.push('/edit-profile/${_selectedProfile.id}'),
+                variant: PPButtonVariant.primary,
               ),
-            ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: PPButton(
+                label: 'Sair',
+                icon: Icons.logout_rounded,
+                onPressed: () async {
+                  await ref.read(authServiceProvider).signOut();
+                  if (context.mounted) context.go('/');
+                },
+                variant: PPButtonVariant.outline,
+              ),
+            ),
           ],
         ),
       ),

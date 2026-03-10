@@ -24,7 +24,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _isGoogleLoading = false;
   String? _errorMessage;
 
   @override
@@ -66,39 +65,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       setState(() {
         _errorMessage = auth.getAuthErrorMessage(code);
         _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _errorMessage = null;
-      _isGoogleLoading = true;
-    });
-
-    try {
-      final auth = ref.read(authServiceProvider);
-      final profileService = ref.read(profileServiceProvider);
-      final cred = await auth.signInWithGoogle();
-      if (cred == null) {
-        setState(() => _isGoogleLoading = false);
-        return;
-      }
-      if (cred.additionalUserInfo?.isNewUser == true && cred.user != null) {
-        await profileService.createUserRecord(
-          cred.user!.uid,
-          cred.user!.email ?? '',
-        );
-      }
-      if (mounted) context.go('/dashboard');
-    } on Exception catch (e) {
-      final auth = ref.read(authServiceProvider);
-      final code = e.toString().contains(']')
-          ? e.toString().split(']').last.trim().split('.').first
-          : '';
-      setState(() {
-        _errorMessage = auth.getAuthErrorMessage(code);
-        _isGoogleLoading = false;
       });
     }
   }
@@ -176,26 +142,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         onPressed: _submit,
                         isLoading: _isLoading,
                         fullWidth: true,
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: AppColors.border)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('ou', style: Theme.of(context).textTheme.bodySmall),
-                          ),
-                          Expanded(child: Divider(color: AppColors.border)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      PPButton(
-                        label: 'Continuar com Google',
-                        icon: Icons.g_mobiledata_rounded,
-                        onPressed: _isLoading ? null : _signInWithGoogle,
-                        isLoading: _isGoogleLoading,
-                        fullWidth: true,
-                        variant: PPButtonVariant.outline,
                       ),
                     ],
                   ),

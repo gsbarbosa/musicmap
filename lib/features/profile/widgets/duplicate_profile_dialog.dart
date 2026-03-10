@@ -68,6 +68,13 @@ class DuplicateProfileDialog extends StatelessWidget {
             subtitle: 'É membro da banda? Solicite para editar o perfil junto com quem cadastrou.',
             onTap: onRequestCoAdmin,
           ),
+          const SizedBox(height: 24),
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Fechar'),
+            ),
+          ),
         ],
       ),
     );
