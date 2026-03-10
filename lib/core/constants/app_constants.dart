@@ -10,7 +10,7 @@ class AppConstants {
   static const int earlyAccessLimit = 500;
 
   /// Vagas já reservadas (contam no total exibido)
-  static const int earlyAccessReserved = 49;
+  static const int earlyAccessReserved = 64;
 
   // Firebase paths
   static const String totalProfilesPath = 'stats/totalProfiles';
