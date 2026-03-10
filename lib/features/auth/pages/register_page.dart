@@ -18,16 +18,12 @@ class RegisterPage extends ConsumerStatefulWidget {
   ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-enum _AccountType { band, person }
-
 class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-
-  _AccountType _accountType = _AccountType.band;
   bool _declarationAccepted = false;
   bool _isLoading = false;
   bool _isGoogleLoading = false;
@@ -183,7 +179,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         await profileService.createUserRecord(
           cred.user!.uid,
           cred.user!.email ?? '',
-          accountType: _accountType == _AccountType.band ? 'band' : 'person',
+          accountType: 'band',
           representationDeclarationAcceptedAt: DateTime.now().toIso8601String(),
         );
       }
@@ -226,7 +222,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         await profileService.createUserRecord(
           cred.user!.uid,
           cred.user!.email ?? '',
-          accountType: 'person', // Google = email pessoal, assume gestor
+          accountType: 'band',
           // Declaração será coletada no complete-profile
         );
       }
@@ -262,119 +258,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _accountType == _AccountType.band
-                      ? 'Use o email da banda para criar sua conta no mapa.'
-                      : 'Cadastre-se para gerenciar várias bandas no Music Map.',
+                  'Use o email para criar sua conta no mapa.',
                   style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Como você quer se cadastrar?',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _accountType = _AccountType.band),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: _accountType == _AccountType.band
-                                ? AppColors.primary.withOpacity(0.15)
-                                : AppColors.surfaceSecondary,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _accountType == _AccountType.band
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                              width: _accountType == _AccountType.band ? 2 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.music_note_rounded,
-                                size: 28,
-                                color: _accountType == _AccountType.band
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Banda/Artista',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: _accountType == _AccountType.band
-                                      ? AppColors.primary
-                                      : AppColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                'Conta da banda',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _accountType = _AccountType.person),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: _accountType == _AccountType.person
-                                ? AppColors.primary.withOpacity(0.15)
-                                : AppColors.surfaceSecondary,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _accountType == _AccountType.person
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                              width: _accountType == _AccountType.person ? 2 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.people_rounded,
-                                size: 28,
-                                color: _accountType == _AccountType.person
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Gestor',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: _accountType == _AccountType.person
-                                      ? AppColors.primary
-                                      : AppColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                'Várias bandas',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 32),
                 Form(
@@ -382,8 +267,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   child: Column(
                     children: [
                       PPInput(
-                        label: _accountType == _AccountType.band ? 'Email da banda' : 'Email',
-                        hint: _accountType == _AccountType.band ? 'banda@email.com' : 'seu@email.com',
+                        label: 'Email',
+                        hint: 'seu@email.com',
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         validator: Validators.email,
