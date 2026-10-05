@@ -8,12 +8,6 @@ class AppConstants {
   /// Monograma compacto na navegação (iniciais alinhadas a [appName])
   static const String appMonogram = 'MM';
 
-  /// Vagas para o pré-lançamento
-  static const int earlyAccessLimit = 500;
-
-  /// Vagas já reservadas (contam no total exibido)
-  static const int earlyAccessReserved = 64;
-
   // Firebase paths
   static const String totalProfilesPath = 'stats/totalProfiles';
   /// Contador de aberturas da página pública (gravado por Cloud Function)

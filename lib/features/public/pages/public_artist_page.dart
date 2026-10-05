@@ -169,8 +169,7 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      const PPBadge(label: 'Early Access', variant: PPBadgeVariant.primary),
-                      const PPBadge(label: 'Cena fundadora', variant: PPBadgeVariant.secondary),
+                      const PPBadge(label: 'No hub', variant: PPBadgeVariant.primary),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -202,14 +201,14 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
                   PPCard(
                     child: Text(
                       'Quer cadastrar sua banda no ${AppConstants.appName}? '
-                      'Garanta sua vaga no acesso antecipado ao hub.',
+                      'Entre ou crie uma conta para organizar agenda, tarefas e lançamentos.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                   const SizedBox(height: 12),
                   FilledButton(
-                    onPressed: () => context.go('/'),
-                    child: const Text('Cadastrar no Music Map'),
+                    onPressed: () => context.go('/register'),
+                    child: const Text('Criar conta'),
                   ),
                   const SizedBox(height: 48),
                 ],

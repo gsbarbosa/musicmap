@@ -45,14 +45,6 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
     try {
       final isNew = profile.id.isEmpty;
       if (isNew) {
-        final atLimit = await profileService.isAtEarlyAccessLimit();
-        if (atLimit) {
-          setState(() {
-            _errorMessage = 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!';
-            _isLoading = false;
-          });
-          return;
-        }
         final duplicate = await profileService.findDuplicateProfile(
           profile.artistName,
           profile.instagram,
@@ -124,9 +116,7 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
           ? '${e.plugin}/${e.code}: ${e.message}'
           : e.toString();
       setState(() {
-        _errorMessage = e.toString().contains('early_access_limit_reached')
-            ? 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!'
-            : firebaseRtdbSaveUserMessage(e);
+        _errorMessage = firebaseRtdbSaveUserMessage(e);
         _errorDetail = detail.length > 400 ? '${detail.substring(0, 400)}…' : detail;
         _isLoading = false;
       });
@@ -159,7 +149,7 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Conte um pouco sobre você ou sua banda para garantir seu acesso antecipado.',
+                'Conte um pouco sobre você ou sua banda para montar o perfil no hub.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               if (_errorMessage != null) ...[

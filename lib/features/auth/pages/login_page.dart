@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/providers/providers.dart';
+import '../../../core/utils/share_url.dart';
 import '../../../shared/widgets/page_container.dart';
 import '../../../shared/widgets/pp_button.dart';
 import '../../../shared/widgets/pp_input.dart';
@@ -31,6 +33,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   String? _referralFromRoute() {
     return GoRouterState.of(context).uri.queryParameters[AppConstants.referralQueryParam];
   }
+
+  String? _joinNext() => safeJoinPath(GoRouterState.of(context).uri.queryParameters['next']);
+
+  String _afterAuth() => _joinNext() ?? '/dashboard';
 
   @override
   void dispose() {
@@ -62,7 +68,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-      if (mounted) context.go('/dashboard');
+      if (mounted) context.go(_afterAuth());
     } on Exception catch (e) {
       final auth = ref.read(authServiceProvider);
       final code = e.toString().contains(']')
@@ -90,27 +96,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         return;
       }
       if (cred.additionalUserInfo?.isNewUser == true) {
-        final atLimit = await profileService.isAtEarlyAccessLimit();
-        if (atLimit) {
-          await auth.signOut();
-          setState(() {
-            _errorMessage = 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!';
-            _isGoogleLoading = false;
-          });
-          return;
-        }
         if (cred.user != null) {
           await profileService.createUserRecord(
             cred.user!.uid,
             cred.user!.email ?? '',
-            accountType: 'band',
-            referralSource: _referralFromRoute(),
+            accountType: _joinNext() != null ? 'person' : 'band',
+            referralSource: _joinNext() != null ? 'invite' : _referralFromRoute(),
           );
         }
       }
       if (mounted) {
         setState(() => _isGoogleLoading = false);
-        context.go('/dashboard');
+        context.go(_afterAuth());
       }
     } on Exception catch (e) {
       final auth = ref.read(authServiceProvider);
@@ -127,9 +124,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.landingAura),
+        child: Center(
+          child: SingleChildScrollView(
           controller: _scrollController,
+          padding: const EdgeInsets.symmetric(vertical: 32),
           child: PageContainer(
             maxWidth: 420,
             child: Column(
@@ -138,12 +138,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const Center(child: PPLogo(showTagline: true, fontSize: 36)),
                 const SizedBox(height: 48),
                 Text(
-                  'Entrar',
+                  _joinNext() != null ? 'Entrar para participar' : 'Entrar',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Entre com email e senha ou com sua conta Google.',
+                  _joinNext() != null
+                      ? 'Sua conta já basta para entrar na banda. O perfil do projeto continua com quem te convidou.'
+                      : 'Acesse o hub com email e senha ou com sua conta Google.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 32),
@@ -237,7 +239,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     GestureDetector(
-                      onTap: () => context.go('/register'),
+                      onTap: () {
+                        final next = _joinNext();
+                        context.go(
+                          next == null
+                              ? '/register'
+                              : '/register?next=${Uri.encodeQueryComponent(next)}',
+                        );
+                      },
                       child: const Text(
                         'Criar perfil',
                         style: TextStyle(
@@ -248,9 +257,39 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 32),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.go('/terms'),
+                      child: Text(
+                        'Termos de Uso',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                              decoration: TextDecoration.underline,
+                            ),
+                      ),
+                    ),
+                    Text('•', style: TextStyle(color: AppColors.textSecondary)),
+                    GestureDetector(
+                      onTap: () => context.go('/privacy'),
+                      child: Text(
+                        'Política de Privacidade',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                              decoration: TextDecoration.underline,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
+        ),
         ),
       ),
     );

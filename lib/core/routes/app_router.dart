@@ -14,7 +14,6 @@ import '../../features/workspace/pages/releases_page.dart';
 import '../../features/workspace/pages/commitment_detail_page.dart';
 import '../../features/workspace/pages/shows_page.dart';
 import '../../features/workspace/pages/tasks_page.dart';
-import '../../features/landing/pages/landing_page.dart';
 import '../../features/legal/pages/privacy_page.dart';
 import '../../features/legal/pages/terms_page.dart';
 import '../../features/profile/pages/artist_profile_page.dart';
@@ -24,6 +23,7 @@ import '../../features/profile/pages/join_project_page.dart';
 import '../../features/profile/pages/project_members_page.dart';
 import '../../features/public/pages/public_artist_page.dart';
 import '../providers/providers.dart';
+import '../utils/share_url.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -42,7 +42,6 @@ GoRouter createAppRouter(Ref ref) {
       final isDashboard = loc == '/dashboard';
       final isPerfil = loc == '/perfil';
       final isEditProfile = loc.startsWith('/edit-profile');
-      final isCompleteProfile = loc.startsWith('/complete-profile');
       final isAdminRoute = loc.startsWith('/admin');
       final isWorkspaceModule = loc.startsWith('/shows/') ||
           loc.startsWith('/gigbag/') ||
@@ -51,31 +50,33 @@ GoRouter createAppRouter(Ref ref) {
           loc.startsWith('/project-members/');
 
       final isJoinProject = loc.startsWith('/join-project');
+      final isJoinLink = loc.startsWith('/join/');
 
       if (user == null) {
         if (isDashboard ||
             isPerfil ||
             isEditProfile ||
-            isCompleteProfile ||
+            loc.startsWith('/complete-profile') ||
             isAdminRoute ||
             isWorkspaceModule ||
             isJoinProject) {
+          final next = safeJoinPath(state.uri.queryParameters['next']);
+          if (next != null) return '/login?next=${Uri.encodeQueryComponent(next)}';
           return '/login';
         }
         return null;
       }
 
+      if (loc == '/' || loc == '/login' || loc == '/register') {
+        return safeJoinPath(state.uri.queryParameters['next']) ?? '/dashboard';
+      }
+
+      if (isJoinLink) return null;
+
       if (isAdminRoute) {
         final admin = await ref.read(profileServiceProvider).isAdmin(user.uid, user.email);
         if (!admin) return '/dashboard';
         return null;
-      }
-
-      final profiles =
-          await ref.read(profileServiceProvider).getProfilesForUser(user.uid);
-
-      if (profiles.isEmpty && !isCompleteProfile && (isDashboard || isPerfil || isEditProfile)) {
-        return '/complete-profile';
       }
 
       if (isWorkspaceModule) {
@@ -117,7 +118,7 @@ GoRouter createAppRouter(Ref ref) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, __) => const LandingPage(),
+        builder: (_, __) => const LoginPage(),
       ),
       GoRoute(
         path: '/login',
@@ -141,6 +142,13 @@ GoRouter createAppRouter(Ref ref) {
       GoRoute(
         path: '/complete-profile',
         builder: (_, __) => const CompleteProfilePage(),
+      ),
+      GoRoute(
+        path: '/join/:token',
+        builder: (context, state) {
+          final token = state.pathParameters['token'] ?? '';
+          return JoinProjectPage(token: token);
+        },
       ),
       GoRoute(
         path: '/join-project',

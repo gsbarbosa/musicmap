@@ -31,11 +31,42 @@ class ArtistProfilePage extends ConsumerWidget {
           return Scaffold(
             appBar: AppBar(title: const Text('Meu perfil')),
             body: Center(
-              child: PPErrorState(
-                title: 'Nenhum perfil',
-                message: 'Complete seu perfil para continuar.',
-                onRetry: () => context.push('/complete-profile'),
-                retryLabel: 'Completar perfil',
+              child: PageContainer(
+                maxWidth: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Nenhum projeto ainda',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Entre com o convite da banda ou crie o seu próprio projeto.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    PPButton(
+                      label: 'Entrar com convite',
+                      icon: Icons.group_add_rounded,
+                      onPressed: () => context.push('/join-project'),
+                      fullWidth: true,
+                    ),
+                    const SizedBox(height: 12),
+                    PPButton(
+                      label: 'Criar meu projeto',
+                      onPressed: () => context.push('/complete-profile'),
+                      variant: PPButtonVariant.outline,
+                      fullWidth: true,
+                    ),
+                  ],
+                ),
               ),
             ),
           );

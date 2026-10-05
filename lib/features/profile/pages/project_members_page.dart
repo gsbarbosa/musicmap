@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/share_url.dart';
 import '../../../core/utils/user_facing_error.dart';
 import '../../../shared/models/profile_member.dart';
 import '../../../shared/models/user_profile.dart';
@@ -110,24 +111,35 @@ class _ProjectMembersBodyState extends ConsumerState<_ProjectMembersBody> {
             role: _inviteRole,
           );
       if (!mounted) return;
+      final link = projectInviteUrl(token);
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Convite criado'),
-          content: SelectableText(
-            token,
-            style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+          title: const Text('Link do convite'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Envie este link. Quem abrir entra na banda com a própria conta, sem cadastrar outro perfil.',
+              ),
+              const SizedBox(height: 12),
+              SelectableText(
+                link,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Clipboard.setData(ClipboardData(text: token));
+                Clipboard.setData(ClipboardData(text: link));
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Código copiado')),
+                  const SnackBar(content: Text('Link copiado')),
                 );
               },
-              child: const Text('Copiar'),
+              child: const Text('Copiar link'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx),
@@ -317,7 +329,7 @@ class _ProjectMembersBodyState extends ConsumerState<_ProjectMembersBody> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'O integrante cola o código em Meu espaço → Entrar com código (após criar conta).',
+                    'O link abre direto o convite. A pessoa entra com Google ou email e já participa da banda.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                           height: 1.4,
@@ -347,7 +359,7 @@ class _ProjectMembersBodyState extends ConsumerState<_ProjectMembersBody> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   PPButton(
-                    label: 'Gerar código de convite',
+                    label: 'Gerar link de convite',
                     icon: Icons.add_link_rounded,
                     onPressed: _creatingInvite ? null : _createInvite,
                     isLoading: _creatingInvite,

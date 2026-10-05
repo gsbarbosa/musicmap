@@ -6,6 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/providers/providers.dart';
+import '../../../core/utils/share_url.dart';
 import '../../../shared/widgets/page_container.dart';
 import '../../../shared/widgets/pp_button.dart';
 import '../../../shared/widgets/pp_input.dart';
@@ -137,6 +138,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return GoRouterState.of(context).uri.queryParameters[AppConstants.referralQueryParam];
   }
 
+  String? _joinNext() => safeJoinPath(GoRouterState.of(context).uri.queryParameters['next']);
+
   String? _confirmPassword(String? value) {
     if (value != _passwordController.text) {
       return 'As senhas não coincidem';
@@ -150,20 +153,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       _isLoading = true;
     });
 
-    try {
-      final atLimit = await ref.read(profileServiceProvider).isAtEarlyAccessLimit();
-      if (atLimit) {
-        setState(() {
-          _errorMessage = 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!';
-          _isLoading = false;
-        });
-        return;
-      }
-    } catch (_) {
-      // Continua se falhar ao verificar limite
-    }
-
-    if (!(_formKey.currentState?.validate() ?? false) || !_declarationAccepted) {
+    final joining = _joinNext() != null;
+    if (!(_formKey.currentState?.validate() ?? false) || (!joining && !_declarationAccepted)) {
       setState(() => _isLoading = false);
       _scrollController.animateTo(
         0,
@@ -184,12 +175,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         await profileService.createUserRecord(
           cred.user!.uid,
           cred.user!.email ?? '',
-          accountType: 'band',
-          representationDeclarationAcceptedAt: DateTime.now().toIso8601String(),
-          referralSource: _referralFromRoute(),
+          accountType: joining ? 'person' : 'band',
+          representationDeclarationAcceptedAt:
+              joining ? null : DateTime.now().toIso8601String(),
+          referralSource: joining ? 'invite' : _referralFromRoute(),
         );
       }
-      if (mounted) context.go('/complete-profile');
+      if (mounted) context.go(_joinNext() ?? '/complete-profile');
     } on Exception catch (e) {
       final auth = ref.read(authServiceProvider);
       final code = e.toString().contains(']')
@@ -209,14 +201,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     });
 
     try {
-      final atLimit = await ref.read(profileServiceProvider).isAtEarlyAccessLimit();
-      if (atLimit) {
-        setState(() {
-          _errorMessage = 'As vagas do pré-lançamento foram esgotadas. Em breve teremos novidades!';
-          _isGoogleLoading = false;
-        });
-        return;
-      }
       final auth = ref.read(authServiceProvider);
       final profileService = ref.read(profileServiceProvider);
       final cred = await auth.signInWithGoogle();
@@ -228,12 +212,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         await profileService.createUserRecord(
           cred.user!.uid,
           cred.user!.email ?? '',
-          accountType: 'band',
-          referralSource: _referralFromRoute(),
-          // Declaração será coletada no complete-profile
+          accountType: _joinNext() != null ? 'person' : 'band',
+          referralSource: _joinNext() != null ? 'invite' : _referralFromRoute(),
         );
       }
-      if (mounted) context.go('/dashboard');
+      if (mounted) context.go(_joinNext() ?? '/dashboard');
     } on Exception catch (e) {
       final auth = ref.read(authServiceProvider);
       final code = e.toString().contains(']')
@@ -260,12 +243,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 const Center(child: PPLogo(showTagline: true, fontSize: 36)),
                 const SizedBox(height: 48),
                 Text(
-                  'Criar conta',
+                  _joinNext() != null ? 'Criar conta e entrar' : 'Criar conta',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Pré-lançamento: seu cadastro reserva vaga no acesso antecipado ao hub.',
+                  _joinNext() != null
+                      ? 'Uma conta rápida para participar da banda. O perfil do projeto você não precisa preencher.'
+                      : 'Crie sua conta para organizar shows, tarefas e lançamentos.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 32),
@@ -299,8 +284,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         validator: _confirmPassword,
                         onChanged: (_) => setState(() => _errorMessage = null),
                       ),
-                      const SizedBox(height: 24),
-                      _buildDeclarationCheckbox(context),
+                      if (_joinNext() == null) ...[
+                        const SizedBox(height: 24),
+                        _buildDeclarationCheckbox(context),
+                      ],
                       const SizedBox(height: 16),
                       _buildLegalLinks(context),
                       if (_errorMessage != null) ...[
@@ -365,7 +352,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     GestureDetector(
-                      onTap: () => context.go('/login'),
+                      onTap: () {
+                        final next = _joinNext();
+                        context.go(
+                          next == null ? '/login' : '/login?next=${Uri.encodeQueryComponent(next)}',
+                        );
+                      },
                       child: const Text(
                         'Entrar',
                         style: TextStyle(

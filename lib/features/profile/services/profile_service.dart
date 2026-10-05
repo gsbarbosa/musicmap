@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/firebase/app_firebase_database.dart';
-import '../../../../core/firebase/https_callable_web_client.dart';
 import '../../../../core/firebase/rtdb_rest_client.dart';
 import '../../../../core/utils/profile_lookup.dart';
 import '../../../../shared/models/profile_member.dart';
@@ -67,13 +66,6 @@ class ProfileService {
     );
   }
 
-  /// Verifica se o limite de vagas do pré-lançamento foi atingido
-  Future<bool> isAtEarlyAccessLimit() async {
-    final total = await getTotalProfileCount();
-    final count = AppConstants.earlyAccessReserved + total;
-    return count >= AppConstants.earlyAccessLimit;
-  }
-
   /// Busca perfil duplicado por nome + Instagram (normalizados)
   /// Retorna o perfil existente se encontrar, null caso contrário
   Future<UserProfile?> findDuplicateProfile(String artistName, String instagram) async {
@@ -105,7 +97,6 @@ class ProfileService {
 
   /// Cria ou atualiza perfil
   /// Se profile.id estiver vazio, cria novo
-  /// Lança StateError se limite de vagas atingido (apenas para novo perfil)
   Future<String> saveProfile(UserProfile profile) async {
     await _refreshAuthTokenForRtdb();
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -125,12 +116,6 @@ class ProfileService {
       if (!allowed) throw StateError('forbidden');
     }
 
-    if (isNew) {
-      final atLimit = await isAtEarlyAccessLimit();
-      if (atLimit) {
-        throw StateError('early_access_limit_reached');
-      }
-    }
     final profileId = isNew ? _db.child(AppConstants.profilesPath).push().key! : profile.id;
 
     final profileData = profile.toMap();
@@ -582,25 +567,104 @@ class ProfileService {
     return token;
   }
 
-  /// Consome convite via Cloud Function `acceptInvite` (atualiza RTDB com privilégio admin).
+  /// Entra no projeto pelo convite.
+  ///
+  /// A Cloud Function `acceptInvite` está indisponível (HTTP 503). As regras do
+  /// RTDB já deixam o usuário autenticado ler o convite e gravar o próprio acesso.
   Future<Map<String, dynamic>> acceptInviteWithCallable(String token) async {
     final trimmed = token.trim();
-    if (trimmed.isEmpty) throw StateError('empty_token');
-    final dynamic data;
-    if (kIsWeb) {
-      data = await postHttpsCallableJson(
-        functionName: 'acceptInvite',
-        data: <String, dynamic>{'token': trimmed},
+    if (trimmed.length < 8 || trimmed.length > 64) {
+      throw FirebaseFunctionsException(
+        code: 'invalid-argument',
+        message: 'Código de convite inválido',
       );
-    } else {
-      final callable = FirebaseFunctions.instance.httpsCallable('acceptInvite');
-      final result = await callable.call(<String, dynamic>{'token': trimmed});
-      data = result.data;
     }
-    if (data is! Map) return {};
-    return Map<String, dynamic>.from(
-      data.map((k, v) => MapEntry(k.toString(), v)),
+    await _refreshAuthTokenForRtdb();
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    final rawInvite = await _readJson('${AppConstants.inviteByCodePath}/$trimmed');
+    if (rawInvite is! Map) {
+      throw FirebaseFunctionsException(
+        code: 'not-found',
+        message: 'Convite não encontrado',
+      );
+    }
+    final inv = Map<String, dynamic>.from(
+      rawInvite.map((k, v) => MapEntry(k.toString(), v)),
     );
+    final profileId = inv['profileId']?.toString() ?? '';
+    if (profileId.isEmpty) {
+      throw FirebaseFunctionsException(
+        code: 'failed-precondition',
+        message: 'Convite corrompido',
+      );
+    }
+    final roleRaw = inv['role']?.toString();
+    final role = (roleRaw == AppConstants.roleAdmin || roleRaw == AppConstants.roleViewer)
+        ? roleRaw!
+        : AppConstants.roleEditor;
+    final maxUses = inv['maxUses'] is num ? (inv['maxUses'] as num).toInt() : 30;
+    final uses = inv['uses'] is num ? (inv['uses'] as num).toInt() : 0;
+    final expiresAt = inv['expiresAt'] is num ? (inv['expiresAt'] as num).toInt() : null;
+    if (expiresAt != null && DateTime.now().millisecondsSinceEpoch > expiresAt) {
+      throw FirebaseFunctionsException(
+        code: 'failed-precondition',
+        message: 'Este convite expirou',
+      );
+    }
+    if (uses >= maxUses) {
+      throw FirebaseFunctionsException(
+        code: 'resource-exhausted',
+        message: 'Este convite atingiu o limite de usos',
+      );
+    }
+
+    final profileRaw = await _readJson('${AppConstants.profilesPath}/$profileId');
+    if (profileRaw is! Map) {
+      throw FirebaseFunctionsException(
+        code: 'not-found',
+        message: 'Projeto não existe mais',
+      );
+    }
+    final ownerId = profileRaw['ownerUserId']?.toString();
+    if (ownerId == uid) {
+      return {'ok': true, 'profileId': profileId, 'alreadyOwner': true};
+    }
+
+    final existing = await _readJson('${AppConstants.userProfileAccessPath}/$uid/$profileId');
+    if (existing != null) {
+      return {'ok': true, 'profileId': profileId, 'alreadyMember': true};
+    }
+
+    final member = <String, dynamic>{
+      'role': role,
+      'joinedAt': DateTime.now().toIso8601String(),
+    };
+    try {
+      await _writeJson('${AppConstants.userProfileAccessPath}/$uid/$profileId', member);
+      await _writeJson('${AppConstants.profileMembersPath}/$profileId/$uid', member);
+    } catch (e) {
+      throw FirebaseFunctionsException(
+        code: 'permission-denied',
+        message: 'Não foi possível entrar no projeto.',
+      );
+    }
+    return {'ok': true, 'profileId': profileId, 'role': role};
+  }
+
+  Future<dynamic> _readJson(String path) async {
+    if (kIsWeb) return RtdbRestClient.getJson(path);
+    final snap = await _db.child(path).get();
+    if (!snap.exists || snap.value == null) return null;
+    return snap.value;
+  }
+
+  Future<void> _writeJson(String path, Map<String, dynamic> value) async {
+    if (kIsWeb) {
+      await RtdbRestClient.putJson(path, value);
+      return;
+    }
+    await _db.child(path).set(value);
   }
 
   /// Membros com linha em `profile_members` (não inclui o dono, que vem do perfil)

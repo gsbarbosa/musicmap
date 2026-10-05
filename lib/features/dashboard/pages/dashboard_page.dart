@@ -55,7 +55,7 @@ class DashboardPage extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Complete seu perfil no hub',
+                      'Entre num projeto ou crie o seu',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -63,8 +63,8 @@ class DashboardPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      'Crie seu primeiro perfil artístico para liberar a central, shows, '
-                      'tarefas, GigBag e lançamentos — tudo no mesmo hub.',
+                      'Se você recebeu um convite da banda, entre por ele. '
+                      'Não precisa cadastrar um perfil de artista só para ser integrante.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: AppColors.textSecondary,
                             height: 1.5,
@@ -73,10 +73,18 @@ class DashboardPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     PPButton(
-                      label: 'Começar agora',
+                      label: 'Entrar com convite',
+                      icon: Icons.group_add_rounded,
+                      onPressed: () => context.push('/join-project'),
+                      variant: PPButtonVariant.primary,
+                      fullWidth: true,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    PPButton(
+                      label: 'Criar meu projeto',
                       icon: Icons.rocket_launch_rounded,
                       onPressed: () => context.push('/complete-profile'),
-                      variant: PPButtonVariant.primary,
+                      variant: PPButtonVariant.outline,
                       fullWidth: true,
                     ),
                   ],

@@ -7,14 +7,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/share_url.dart';
 import '../../../shared/widgets/page_container.dart';
 import '../../../shared/widgets/pp_button.dart';
 import '../../../shared/widgets/pp_input.dart';
+import '../../../shared/widgets/pp_logo.dart';
 
-/// Aceitar convite por código (Cloud Function `acceptInvite`).
+/// Aceita convite por link (`/join/:token`) ou por código colado.
 class JoinProjectPage extends ConsumerStatefulWidget {
-  const JoinProjectPage({super.key});
+  const JoinProjectPage({super.key, this.token});
+
+  final String? token;
 
   @override
   ConsumerState<JoinProjectPage> createState() => _JoinProjectPageState();
@@ -23,7 +28,18 @@ class JoinProjectPage extends ConsumerStatefulWidget {
 class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
   final _codeCtrl = TextEditingController();
   bool _loading = false;
+  bool _started = false;
   String? _error;
+
+  bool get _fromLink => widget.token != null && widget.token!.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_fromLink) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _acceptIfSignedIn());
+    }
+  }
 
   @override
   void dispose() {
@@ -31,33 +47,82 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  String? get _joinPath => _fromLink ? safeJoinPath('/join/${widget.token}') : null;
+
+  Future<void> _acceptIfSignedIn() async {
+    if (_started || FirebaseAuth.instance.currentUser == null) return;
+    await _accept(widget.token!);
+  }
+
+  Future<void> _submitCode() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = 'Cole o código enviado pelo dono ou admin do projeto.');
+      setState(() => _error = 'Cole o código ou abra o link enviado pela banda.');
       return;
     }
+    await _accept(code);
+  }
+
+  Future<void> _accept(String raw) async {
+    final code = raw.trim();
+    if (_started) return;
+    _started = true;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      await ref.read(profileServiceProvider).acceptInviteWithCallable(code);
-      ref.invalidate(userProfilesProvider(FirebaseAuth.instance.currentUser!.uid));
+      final result = await ref.read(profileServiceProvider).acceptInviteWithCallable(code);
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      ref.invalidate(userProfilesProvider(uid));
+      final profileId = result['profileId']?.toString();
+      if (profileId != null && profileId.isNotEmpty) {
+        ref.read(dashboardWorkspaceProfileIdProvider.notifier).state = profileId;
+      }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Você entrou no projeto. Escolha-o no seletor do hub.')),
-      );
       context.go('/dashboard');
     } on FirebaseFunctionsException catch (e) {
+      _started = false;
       setState(() {
         _loading = false;
         _error = _messageForFunctionsException(e);
       });
     } catch (e) {
+      _started = false;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = 'Não foi possível entrar no projeto. Tente de novo.';
+      });
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _error = null;
+      _loading = true;
+    });
+    try {
+      final auth = ref.read(authServiceProvider);
+      final cred = await auth.signInWithGoogle();
+      if (cred == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+      if (cred.additionalUserInfo?.isNewUser == true && cred.user != null) {
+        await ref.read(profileServiceProvider).createUserRecord(
+              cred.user!.uid,
+              cred.user!.email ?? '',
+              accountType: 'person',
+              referralSource: 'invite',
+            );
+      }
+      _started = false;
+      await _accept(widget.token!);
+    } on Exception {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Não foi possível entrar com Google. Tente de novo.';
       });
     }
   }
@@ -65,7 +130,7 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
   static String _messageForFunctionsException(FirebaseFunctionsException e) {
     switch (e.code) {
       case 'not-found':
-        return 'Código inválido ou convite removido.';
+        return 'Convite inválido ou removido.';
       case 'failed-precondition':
         return 'Convite expirado ou projeto indisponível.';
       case 'resource-exhausted':
@@ -79,6 +144,128 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_fromLink && FirebaseAuth.instance.currentUser == null) {
+      return _buildInviteLanding(context);
+    }
+
+    if (_fromLink && _error == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_fromLink && _error != null) {
+      return _buildAcceptError(context);
+    }
+
+    return _buildCodeForm(context);
+  }
+
+  Widget _buildInviteLanding(BuildContext context) {
+    final next = _joinPath ?? '/dashboard';
+    final loginHref = '/login?next=${Uri.encodeQueryComponent(next)}';
+    final registerHref = '/register?next=${Uri.encodeQueryComponent(next)}';
+
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.landingAura),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+            child: PageContainer(
+              maxWidth: 420,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Center(child: PPLogo(showTagline: true, fontSize: 36)),
+                  const SizedBox(height: 40),
+                  Text(
+                    'Você foi convidado',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Entre com sua conta para participar da banda. '
+                    'Não precisa cadastrar um perfil de artista — o projeto já existe.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.45,
+                        ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Text(_error!, style: const TextStyle(color: AppColors.error)),
+                  ],
+                  const SizedBox(height: 28),
+                  PPButton(
+                    label: 'Continuar com Google',
+                    icon: Icons.g_mobiledata_rounded,
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    isLoading: _loading,
+                    fullWidth: true,
+                  ),
+                  const SizedBox(height: 16),
+                  PPButton(
+                    label: 'Entrar com email',
+                    onPressed: _loading ? null : () => context.go(loginHref),
+                    variant: PPButtonVariant.outline,
+                    fullWidth: true,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Não tem conta? ',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      GestureDetector(
+                        onTap: _loading ? null : () => context.go(registerHref),
+                        child: const Text(
+                          'Criar em um passo',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAcceptError(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: PageContainer(
+          maxWidth: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.error),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PPButton(
+                label: 'Tentar de novo',
+                onPressed: _loading ? null : () => _accept(widget.token!),
+                isLoading: _loading,
+                fullWidth: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCodeForm(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Entrar em um projeto'),
@@ -88,7 +275,7 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
             if (context.canPop()) {
               context.pop();
             } else {
-              context.go('/perfil');
+              context.go('/dashboard');
             }
           },
         ),
@@ -101,8 +288,8 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Peça o código ao administrador da banda ou projeto. '
-                'Cada integrante usa sua própria conta do app.',
+                'Cole o código ou peça o link da banda. '
+                'Sua conta entra no projeto sem criar outro perfil.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
                       height: 1.45,
@@ -125,7 +312,7 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
               PPButton(
                 label: 'Entrar no projeto',
                 icon: Icons.group_add_rounded,
-                onPressed: _loading ? null : _submit,
+                onPressed: _loading ? null : _submitCode,
                 isLoading: _loading,
                 fullWidth: true,
               ),
