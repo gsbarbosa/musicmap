@@ -17,3 +17,6 @@ build/
 
 # Firebase - o firebase_options.dart está no repo com placeholders.
 # Após rodar flutterfire configure, considere adicionar ao .gitignore se usar credenciais sensíveis.
+
+# Docs internos (não versionar)
+NEXT_STEPS_PRIVATE.md

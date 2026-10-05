@@ -2,6 +2,12 @@
   "database": {
     "rules": "firebase.rules.json"
   },
+  "storage": {
+    "rules": "firebase.storage.rules"
+  },
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": "build/web",
     "ignore": [
@@ -18,6 +24,19 @@
             "value": "same-origin-allow-popups"
           }
         ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/share/artist/**",
+        "function": {
+          "functionId": "shareArtistPublic",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
       }
     ]
   }

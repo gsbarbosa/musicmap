@@ -19,6 +19,9 @@ class UserProfile {
   final List<String> interests;
   final bool earlyAccess;
   final String status;
+  /// Visível na página pública `/artist/:id` quando [status] é active
+  final bool publicProfile;
+  final String? photoUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? representationDeclarationAcceptedAt;
@@ -40,6 +43,8 @@ class UserProfile {
     this.interests = const [],
     this.earlyAccess = true,
     this.status = 'active',
+    this.publicProfile = true,
+    this.photoUrl,
     required this.createdAt,
     required this.updatedAt,
     this.representationDeclarationAcceptedAt,
@@ -65,6 +70,8 @@ class UserProfile {
           : [],
       earlyAccess: map['earlyAccess'] ?? true,
       status: map['status'] ?? 'active',
+      publicProfile: map['publicProfile'] ?? true,
+      photoUrl: map['photoUrl'] as String?,
       createdAt: map['createdAt'] != null
           ? DateTime.parse(map['createdAt'] as String)
           : DateTime.now(),
@@ -94,6 +101,8 @@ class UserProfile {
       'interests': interests,
       'earlyAccess': earlyAccess,
       'status': status,
+      'publicProfile': publicProfile,
+      'photoUrl': photoUrl,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       if (representationDeclarationAcceptedAt != null)
@@ -117,7 +126,12 @@ class UserProfile {
     String? tiktok,
     String? bio,
     List<String>? interests,
+    bool? earlyAccess,
+    String? status,
+    bool? publicProfile,
+    String? photoUrl,
     DateTime? representationDeclarationAcceptedAt,
+    DateTime? updatedAt,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -136,10 +150,12 @@ class UserProfile {
       interests: interests ?? this.interests,
       representationDeclarationAcceptedAt:
           representationDeclarationAcceptedAt ?? this.representationDeclarationAcceptedAt,
-      earlyAccess: earlyAccess,
-      status: status,
+      earlyAccess: earlyAccess ?? this.earlyAccess,
+      status: status ?? this.status,
+      publicProfile: publicProfile ?? this.publicProfile,
+      photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt,
-      updatedAt: DateTime.now(),
+      updatedAt: updatedAt ?? DateTime.now(),
     );
   }
 }

@@ -47,12 +47,12 @@ O ${AppConstants.appName} coleta as informações que você fornece ao criar sua
                   _section(context, '2. Finalidade do Uso', '''
 Utilizamos seus dados para:
 • Operar e melhorar a plataforma;
-• Exibir seu perfil no mapa da cena musical;
+• Exibir seu perfil publicamente na plataforma quando aplicável;
 • Comunicar atualizações e novidades sobre o ${AppConstants.appName};
 • Garantir segurança e cumprimento dos Termos de Uso.
 '''),
                   _section(context, '3. Compartilhamento', '''
-Seus dados de perfil (nome, cidade, estado, gênero, links) podem ser exibidos publicamente no mapa e em funcionalidades de descoberta. Não vendemos seus dados a terceiros para fins de marketing.
+Seus dados de perfil (nome, cidade, estado, gênero, links) podem ser exibidos publicamente na página do artista e em funcionalidades da plataforma. Não vendemos seus dados a terceiros para fins de marketing.
 '''),
                   _section(context, '4. Armazenamento e Segurança', '''
 Utilizamos Firebase (Google) para armazenamento e autenticação, em conformidade com práticas de segurança e políticas de privacidade do Google.

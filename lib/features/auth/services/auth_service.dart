@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -29,6 +30,17 @@ class AuthService {
   }
 
   Future<UserCredential?> signInWithGoogle() async {
+    if (kIsWeb) {
+      try {
+        return await _auth.signInWithPopup(GoogleAuthProvider());
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'popup-closed-by-user' || e.code == 'cancelled-popup-request') {
+          return null;
+        }
+        rethrow;
+      }
+    }
+
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) return null;
 
@@ -44,6 +56,16 @@ class AuthService {
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
+  }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  Future<void> deleteCurrentUser() async {
+    final u = _auth.currentUser;
+    if (u == null) throw StateError('no_user');
+    await u.delete();
   }
 
   String? getAuthErrorMessage(String code) {
@@ -63,6 +85,10 @@ class AuthService {
       case 'popup-closed-by-user':
       case 'popup_blocked':
         return 'Login cancelado ou popup bloqueado.';
+      case 'user-disabled':
+        return 'Esta conta foi desativada.';
+      case 'requires-recent-login':
+        return 'Por segurança, faça login novamente antes de excluir a conta.';
       default:
         return 'Erro ao autenticar. Tente novamente.';
     }

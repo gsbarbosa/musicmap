@@ -1,8 +1,8 @@
 # Music Map
 
-**O mapa da cena musical**
+**O hub da sua carreira musical**
 
-Plataforma inicial de mapeamento da cena musical independente. Artistas e bandas se cadastram para garantir acesso antecipado ao sistema.
+Plataforma web para artistas e bandas: agenda, checklists, lançamentos e perfil público em um só lugar. Cadastro no acesso antecipado.
 
 ## Stack
 
@@ -190,4 +190,4 @@ O código está preparado para evoluir com:
 
 ---
 
-**Music Map** — O mapa da cena musical.
+**Music Map** — O hub da sua carreira musical.

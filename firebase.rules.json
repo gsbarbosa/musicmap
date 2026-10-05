@@ -4,22 +4,101 @@
       "totalProfiles": {
         ".read": true,
         ".write": "auth != null"
+      },
+      "profile_views": {
+        "$profileId": {
+          ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('user_profile_access').child(auth.uid).child($profileId).exists() || root.child('admin_users').child(auth.uid).val() == true)",
+          ".write": false
+        }
+      }
+    },
+    "admin_users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": false
       }
     },
     "users": {
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
+        ".read": "auth != null && (auth.uid == $uid || root.child('admin_users').child(auth.uid).val() == true)",
         ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "user_profile_access": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        "$profileId": {
+          ".read": "auth != null && auth.uid == $uid",
+          ".write": "auth != null && (auth.uid == $uid || root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin')"
+        }
+      }
+    },
+    "profile_members": {
+      "$profileId": {
+        ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+        "$memberUid": {
+          ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+          ".write": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' || auth.uid == $memberUid)"
+        }
+      }
+    },
+    "invite_by_code": {
+      "$token": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && (root.child('profiles').child(newData.child('profileId').val()).child('ownerUserId').val() == auth.uid || root.child('user_profile_access').child(auth.uid).child(newData.child('profileId').val()).child('role').val() == 'admin')) || (data.exists() && (root.child('profiles').child(data.child('profileId').val()).child('ownerUserId').val() == auth.uid || root.child('user_profile_access').child(auth.uid).child(data.child('profileId').val()).child('role').val() == 'admin')))"
       }
     },
     "profiles": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      "$profileId": {
+        ".read": "auth != null || (data.child('status').val() == 'active' && data.child('publicProfile').val() != false)",
+        ".write": "auth != null && ((!data.exists() && newData.child('ownerUserId').val() == auth.uid) || (data.exists() && data.child('ownerUserId').val() == auth.uid) || (data.exists() && root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' && newData.child('ownerUserId').val() == data.child('ownerUserId').val()))"
+      }
     },
     "profiles_by_owner": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "auth != null && auth.uid == $uid",
+        "$profileId": {
+          ".read": "auth != null && auth.uid == $uid",
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    },
+    "shows": {
+      "$profileId": {
+        ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+        "$showId": {
+          ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+          ".write": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'editor')"
+        }
+      }
+    },
+    "gigbag": {
+      "$profileId": {
+        ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+        "$checklistId": {
+          ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+          ".write": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'editor')"
+        }
+      }
+    },
+    "releases": {
+      "$profileId": {
+        ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+        "$releaseId": {
+          ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+          ".write": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'editor')"
+        }
+      }
+    },
+    "operational_tasks": {
+      "$profileId": {
+        ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+        "$taskId": {
+          ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+          ".write": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'editor')"
+        }
       }
     }
   }

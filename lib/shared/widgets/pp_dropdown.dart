@@ -11,6 +11,7 @@ class PPDropdown<T> extends StatelessWidget {
   final List<DropdownMenuItem<T>> items;
   final void Function(T?)? onChanged;
   final String? Function(T?)? validator;
+  final bool enabled;
 
   const PPDropdown({
     super.key,
@@ -20,6 +21,7 @@ class PPDropdown<T> extends StatelessWidget {
     required this.items,
     this.onChanged,
     this.validator,
+    this.enabled = true,
   });
 
   @override
@@ -38,7 +40,7 @@ class PPDropdown<T> extends StatelessWidget {
         DropdownButtonFormField<T>(
           value: value,
           items: items,
-          onChanged: onChanged,
+          onChanged: enabled ? onChanged : null,
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,

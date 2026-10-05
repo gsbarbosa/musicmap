@@ -41,7 +41,7 @@ class TermsPage extends StatelessWidget {
 Ao acessar e utilizar o ${AppConstants.appName} (${AppConstants.appTagline}), você concorda em cumprir e estar vinculado a estes Termos de Uso. Se você não concordar com estes termos, não utilize a plataforma.
 '''),
                   _section(context, '2. Descrição do Serviço', '''
-O ${AppConstants.appName} é uma plataforma para mapeamento e conexão da cena musical independente. Artistas, bandas e gestores podem criar perfis para garantir acesso antecipado a funcionalidades futuras, fazer parte do mapa da cena e conectar-se a oportunidades.
+O ${AppConstants.appName} é um hub para organização da carreira musical independente. Artistas, bandas e gestores podem criar perfis para centralizar agenda, tarefas, checklists e lançamentos, com acesso antecipado a novas funcionalidades e conexão com oportunidades.
 '''),
                   _section(context, '3. Cadastro e Conta', '''
 Você declara ao cadastrar-se que:
@@ -55,7 +55,7 @@ O ${AppConstants.appName} reserva-se o direito de suspender ou excluir contas qu
 Você se compromete a utilizar o serviço de forma ética e legal, sem publicar conteúdo difamatório, ofensivo, discriminatório ou que viole direitos de terceiros. Não é permitido o uso da plataforma para spam ou fins comerciais não autorizados.
 '''),
                   _section(context, '5. Propriedade Intelectual', '''
-O conteúdo que você publica em seu perfil (fotos, textos, links) permanece de sua propriedade. Ao publicar, você concede ao ${AppConstants.appName} uma licença para exibir e utilizar esse conteúdo no âmbito da plataforma e para fins de divulgação da cena musical.
+O conteúdo que você publica em seu perfil (fotos, textos, links) permanece de sua propriedade. Ao publicar, você concede ao ${AppConstants.appName} uma licença para exibir e utilizar esse conteúdo no âmbito da plataforma e para fins de divulgação do serviço.
 '''),
                   _section(context, '6. Limitação de Responsabilidade', '''
 O ${AppConstants.appName} é oferecido "como está". Não garantimos disponibilidade ininterrupta ou ausência de erros. Não nos responsabilizamos por danos indiretos decorrentes do uso ou impossibilidade de uso da plataforma.

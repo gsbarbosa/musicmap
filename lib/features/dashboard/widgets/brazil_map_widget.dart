@@ -38,7 +38,7 @@ class _BrazilMapWidgetState extends State<BrazilMapWidget> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Mapa da cena',
+                  'Presença no Brasil',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 if (_hoveredState != null)

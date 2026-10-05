@@ -55,7 +55,11 @@ class _PPButtonState extends State<PPButton>
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null && !widget.isLoading;
 
-    return AnimatedBuilder(
+    return Semantics(
+      button: true,
+      enabled: isEnabled,
+      label: widget.label,
+      child: AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) {
         return Transform.scale(
@@ -136,6 +140,7 @@ class _PPButtonState extends State<PPButton>
             ),
           ),
         ),
+      ),
       ),
     );
   }
