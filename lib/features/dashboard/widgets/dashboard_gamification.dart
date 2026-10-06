@@ -11,6 +11,7 @@ import '../../../shared/models/music_release.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/widgets/pp_badge.dart';
 import '../../../shared/widgets/pp_card.dart';
+import '../../workspace/ledger/ledger_math.dart';
 
 /// Barra de progresso, checklist e mini missões
 class ProfileGamificationSection extends ConsumerWidget {
@@ -61,26 +62,7 @@ class ProfileGamificationSection extends ConsumerWidget {
         const SizedBox(height: 16),
         _hubPistaCard(context, ref, profile),
         const SizedBox(height: 16),
-        PPCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Selos',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              const Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  PPBadge(label: 'Early Access', variant: PPBadgeVariant.primary),
-                  PPBadge(label: 'Cena fundadora', variant: PPBadgeVariant.secondary),
-                ],
-              ),
-            ],
-          ),
-        ),
+        _realBadges(context, ref, profile),
         const SizedBox(height: 16),
         PPCard(
           child: Column(
@@ -259,6 +241,48 @@ class ProfileGamificationSection extends ConsumerWidget {
 }
 
 /// Missões da operação (GigBag, lançamentos, tarefas) — tom leve, integrado à gamificação.
+Widget _realBadges(BuildContext context, WidgetRef ref, UserProfile profile) {
+  final uid = ref.watch(currentUserProvider)?.uid;
+  final person = uid == null ? null : ref.watch(personCardProvider(uid)).valueOrNull;
+  final shows = ref.watch(showsStreamProvider(profile.id)).valueOrNull ?? const [];
+  final ledger = ref.watch(ledgerStreamProvider(profile.id)).valueOrNull ?? const [];
+  final fichaOk = person != null && person.hasName && person.instruments.isNotEmpty;
+  final firstShow = shows.any((show) => show.status != 'cancelled');
+  final caixaOk = ledger.isNotEmpty && ledgerBalances(ledger).isEmpty;
+  final badges = <String>[
+    if (fichaOk) 'Ficha completa',
+    if (firstShow) 'Primeiro compromisso',
+    if (caixaOk) 'Caixa em dia',
+  ];
+
+  return PPCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Selos', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        if (badges.isEmpty)
+          Text(
+            'Aparecem quando a banda faz algo de verdade: ficha completa, primeiro compromisso ou caixa em dia.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final label in badges)
+                PPBadge(label: label, variant: PPBadgeVariant.primary),
+            ],
+          ),
+      ],
+    ),
+  );
+}
+
 Widget _hubPistaCard(BuildContext context, WidgetRef ref, UserProfile profile) {
   final id = profile.id;
   final gigAsync = ref.watch(gigbagStreamProvider(id));

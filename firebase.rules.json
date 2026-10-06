@@ -24,6 +24,12 @@
         ".write": "auth != null && auth.uid == $uid"
       }
     },
+    "people": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
     "user_profile_access": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
@@ -89,6 +95,15 @@
         "$releaseId": {
           ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
           ".write": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'editor')"
+        }
+      }
+    },
+    "ledger": {
+      "$profileId": {
+        ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+        "$entryId": {
+          ".read": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).exists())",
+          ".write": "auth != null && (root.child('profiles').child($profileId).child('ownerUserId').val() == auth.uid || root.child('profiles_by_owner').child(auth.uid).child($profileId).val() == true || root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'admin' || (root.child('user_profile_access').child(auth.uid).child($profileId).child('role').val() == 'editor' && newData.exists()))"
         }
       }
     },

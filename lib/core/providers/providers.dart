@@ -9,7 +9,9 @@ import '../../shared/models/user_profile.dart';
 import '../../shared/models/artist_show.dart';
 import '../../shared/models/gigbag_checklist.dart';
 import '../../shared/models/music_release.dart';
+import '../../shared/models/ledger_entry.dart';
 import '../../shared/models/operational_task.dart';
+import '../../shared/models/person_card.dart';
 import '../../shared/models/profile_member.dart';
 
 /// Providers Riverpod para injeção de dependência
@@ -36,6 +38,11 @@ final gigbagStreamProvider =
 final releasesStreamProvider =
     StreamProvider.family<List<MusicRelease>, String>((ref, profileId) {
   return ref.watch(artistWorkspaceServiceProvider).releasesStream(profileId);
+});
+
+final ledgerStreamProvider =
+    StreamProvider.family<List<LedgerEntry>, String>((ref, profileId) {
+  return ref.watch(artistWorkspaceServiceProvider).ledgerStream(profileId);
 });
 
 final operationalTasksStreamProvider =
@@ -109,6 +116,18 @@ final profileCanEditMetadataProvider =
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return ref.read(profileServiceProvider).canEditProfileMetadata(user.uid, profileId);
+});
+
+/// Ficha da pessoa (`people/{uid}`)
+final personCardProvider =
+    FutureProvider.autoDispose.family<PersonCard?, String>((ref, userId) async {
+  return ref.read(profileServiceProvider).getPerson(userId);
+});
+
+/// Dono e integrantes com nome, para tarefas e a lista da banda
+final projectPeopleProvider =
+    FutureProvider.autoDispose.family<Map<String, PersonCard>, String>((ref, profileId) async {
+  return ref.read(profileServiceProvider).loadPeopleForProject(profileId);
 });
 
 /// Lista de integrantes (UID → papel) para a página de membros

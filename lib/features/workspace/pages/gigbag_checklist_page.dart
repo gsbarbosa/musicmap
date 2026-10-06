@@ -404,7 +404,7 @@ class _ChecklistEditorViewState extends State<_ChecklistEditorView> {
               children: [
                 if (widget.readOnly) ...[
                   Text(
-                    'Somente leitura — você pode ver a lista, mas não alterar itens.',
+                    'Só acompanha — você vê a lista, mas não altera itens.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                           height: 1.4,

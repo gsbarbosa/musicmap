@@ -8,7 +8,6 @@ import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/page_container.dart';
 import '../../../shared/models/user_profile.dart';
-import '../../../shared/widgets/pp_badge.dart';
 import '../../../shared/widgets/pp_card.dart';
 import '../../../shared/widgets/pp_logo.dart';
 import '../../profile/services/profile_view_service.dart';
@@ -165,12 +164,11 @@ class _PublicBodyState extends ConsumerState<_PublicBody> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      const PPBadge(label: 'No hub', variant: PPBadgeVariant.primary),
-                    ],
+                  Text(
+                    'Bio, cidade, links e contato.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                   ),
                   const SizedBox(height: 24),
                   _infoRow(context, 'Gênero', p.genre),

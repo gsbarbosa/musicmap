@@ -9,6 +9,8 @@ import '../../features/auth/pages/register_page.dart';
 import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/shell/workspace_shell.dart';
 import '../../features/workspace/pages/gigbag_checklist_page.dart';
+import '../../features/workspace/pages/ledger_entry_page.dart';
+import '../../features/workspace/pages/ledger_page.dart';
 import '../../features/workspace/pages/gigbag_page.dart';
 import '../../features/workspace/pages/releases_page.dart';
 import '../../features/workspace/pages/commitment_detail_page.dart';
@@ -20,6 +22,7 @@ import '../../features/profile/pages/artist_profile_page.dart';
 import '../../features/profile/pages/complete_profile_page.dart';
 import '../../features/profile/pages/edit_profile_page.dart';
 import '../../features/profile/pages/join_project_page.dart';
+import '../../features/profile/pages/person_card_page.dart';
 import '../../features/profile/pages/project_members_page.dart';
 import '../../features/public/pages/public_artist_page.dart';
 import '../providers/providers.dart';
@@ -47,9 +50,11 @@ GoRouter createAppRouter(Ref ref) {
           loc.startsWith('/gigbag/') ||
           loc.startsWith('/releases/') ||
           loc.startsWith('/tasks/') ||
+          loc.startsWith('/caixa/') ||
           loc.startsWith('/project-members/');
 
       final isJoinProject = loc.startsWith('/join-project');
+      final isPersonCard = loc == '/eu';
       final isJoinLink = loc.startsWith('/join/');
 
       if (user == null) {
@@ -59,7 +64,8 @@ GoRouter createAppRouter(Ref ref) {
             loc.startsWith('/complete-profile') ||
             isAdminRoute ||
             isWorkspaceModule ||
-            isJoinProject) {
+            isJoinProject ||
+            isPersonCard) {
           final next = safeJoinPath(state.uri.queryParameters['next']);
           if (next != null) return '/login?next=${Uri.encodeQueryComponent(next)}';
           return '/login';
@@ -83,7 +89,7 @@ GoRouter createAppRouter(Ref ref) {
         final segs = state.uri.pathSegments;
         String? workspaceProfileId;
           if (segs.length >= 2) {
-          if (segs[0] == 'shows' || segs[0] == 'releases' || segs[0] == 'tasks') {
+          if (segs[0] == 'shows' || segs[0] == 'releases' || segs[0] == 'tasks' || segs[0] == 'caixa') {
             workspaceProfileId = segs[1];
           } else if (segs[0] == 'gigbag' && segs[1] != 'checklist') {
             workspaceProfileId = segs[1];
@@ -185,6 +191,30 @@ GoRouter createAppRouter(Ref ref) {
             },
           ),
           GoRoute(
+            path: '/caixa/:profileId',
+            builder: (context, state) {
+              final id = state.pathParameters['profileId'] ?? '';
+              return LedgerPage(profileId: id);
+            },
+            routes: [
+              GoRoute(
+                path: 'lancamento',
+                builder: (context, state) {
+                  final id = state.pathParameters['profileId'] ?? '';
+                  return LedgerEntryPage(profileId: id);
+                },
+              ),
+              GoRoute(
+                path: 'lancamento/:entryId',
+                builder: (context, state) {
+                  final id = state.pathParameters['profileId'] ?? '';
+                  final entryId = state.pathParameters['entryId'] ?? '';
+                  return LedgerEntryPage(profileId: id, entryId: entryId);
+                },
+              ),
+            ],
+          ),
+          GoRoute(
             path: '/tasks/:profileId',
             builder: (context, state) {
               final id = state.pathParameters['profileId'] ?? '';
@@ -217,6 +247,10 @@ GoRouter createAppRouter(Ref ref) {
               final id = state.pathParameters['profileId'] ?? '';
               return ProjectMembersPage(profileId: id);
             },
+          ),
+          GoRoute(
+            path: '/eu',
+            builder: (_, __) => const PersonCardPage(),
           ),
           GoRoute(
             path: '/perfil',

@@ -5,7 +5,9 @@ import '../../../core/firebase/app_firebase_database.dart';
 import '../../../shared/models/artist_show.dart';
 import '../../../shared/models/gigbag_checklist.dart';
 import '../../../shared/models/music_release.dart';
+import '../../../shared/models/ledger_entry.dart';
 import '../../../shared/models/operational_task.dart';
+import '../ledger/ledger_math.dart';
 
 /// Persistência de shows, GigBag e lançamentos (Realtime Database, por perfil)
 class ArtistWorkspaceService {
@@ -22,6 +24,9 @@ class ArtistWorkspaceService {
 
   DatabaseReference _tasksRef(String profileId) =>
       _db.child(AppConstants.operationalTasksPath).child(profileId);
+
+  DatabaseReference _ledgerRef(String profileId) =>
+      _db.child(AppConstants.ledgerPath).child(profileId);
 
   // --- Shows ---
 
@@ -260,6 +265,7 @@ class ArtistWorkspaceService {
       title: task.title,
       description: task.description,
       assignee: task.assignee,
+      assigneeUserId: task.assigneeUserId,
       dueDate: task.dueDate,
       priority: task.priority,
       status: task.status,
@@ -276,5 +282,60 @@ class ArtistWorkspaceService {
 
   Future<void> deleteOperationalTask(String profileId, String taskId) async {
     await _tasksRef(profileId).child(taskId).remove();
+  }
+
+  // --- Caixa ---
+
+  Stream<List<LedgerEntry>> ledgerStream(String profileId) {
+    return _ledgerRef(profileId).onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) return <LedgerEntry>[];
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
+      final list = <LedgerEntry>[];
+      for (final entry in data.entries) {
+        list.add(
+          LedgerEntry.fromMap(
+            entry.key as String,
+            profileId,
+            Map<String, dynamic>.from(entry.value as Map),
+          ),
+        );
+      }
+      list.sort((a, b) {
+        final byDate = b.date.compareTo(a.date);
+        if (byDate != 0) return byDate;
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
+      return list;
+    });
+  }
+
+  Future<String> saveLedgerEntry(LedgerEntry entry) async {
+    final error = validateLedgerEntry(entry);
+    if (error != null) throw ArgumentError(error);
+    final id = entry.id.isEmpty ? _ledgerRef(entry.profileId).push().key! : entry.id;
+    final now = DateTime.now();
+    final toSave = LedgerEntry(
+      id: id,
+      profileId: entry.profileId,
+      title: entry.title.trim(),
+      kind: entry.kind,
+      amountCents: entry.amountCents,
+      date: entry.date,
+      category: entry.category,
+      paidBy: entry.paidBy,
+      splitMode: entry.splitMode,
+      participants: entry.participants,
+      names: entry.names,
+      showId: entry.showId,
+      createdBy: entry.createdBy,
+      createdAt: entry.id.isEmpty ? now : entry.createdAt,
+      updatedAt: now,
+    );
+    await _ledgerRef(entry.profileId).child(id).set(toSave.toMap());
+    return id;
+  }
+
+  Future<void> deleteLedgerEntry(String profileId, String entryId) async {
+    await _ledgerRef(profileId).child(entryId).remove();
   }
 }

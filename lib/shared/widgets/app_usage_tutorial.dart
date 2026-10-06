@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 
@@ -27,60 +26,25 @@ class _TutorialStep {
 
 List<_TutorialStep> _steps() => [
       const _TutorialStep(
-        icon: Icons.waving_hand_rounded,
-        title: 'Bem-vindo ao hub',
+        icon: Icons.badge_outlined,
+        title: 'Quem você é',
         body:
-            'O ${AppConstants.appName} reúne agenda, checklists, tarefas, lançamentos e seu perfil '
-            'público em um só lugar. Uma conta pode ter vários projetos (bandas ou artistas).',
-      ),
-      const _TutorialStep(
-        icon: Icons.layers_rounded,
-        title: 'Projeto ativo',
-        body:
-            'No topo da tela, o seletor define qual projeto está em foco. Compromisso, Lançamentos, '
-            'GigBag e Tarefas sempre usam essa banda — troque aqui quando trabalhar em outro projeto.',
-      ),
-      const _TutorialStep(
-        icon: Icons.explore_rounded,
-        title: 'Central',
-        body:
-            'Comece pela Central: resumo do que importa hoje e atalhos ao menu lateral '
-            '(Compromisso → Lançamentos → GigBag → Tarefas). É o painel de comando do projeto ativo.',
+            'A banda te vê pelo nome e pelo instrumento. Se ainda não disse, abra Banda e preencha a ficha. '
+            'Uma conta pode participar de mais de uma banda.',
       ),
       const _TutorialStep(
         icon: Icons.event_rounded,
-        title: 'Compromisso — agenda',
+        title: 'O próximo compromisso',
         body:
-            'Cadastre compromissos (show, ensaio, gravação…). Toque no card para abrir o hub do '
-            'compromisso: resumo do evento, checklists ligadas e tarefas vinculadas àquele evento.',
+            'Hoje abre no que vem pela frente. Em Agenda você marca ensaio, show ou gravação. '
+            'A banda do topo é a banda da tela inteira.',
       ),
       const _TutorialStep(
-        icon: Icons.album_rounded,
-        title: 'Lançamentos',
+        icon: Icons.groups_rounded,
+        title: 'Quem mais está na banda',
         body:
-            'Planeje singles, EPs e álbuns com datas, status e marcos (capa, distribuição, divulgação). '
-            'Tudo fica registrado para a equipe acompanhar.',
-      ),
-      const _TutorialStep(
-        icon: Icons.checklist_rounded,
-        title: 'GigBag',
-        body:
-            'Monte checklists de palco e estrada. Você pode duplicar modelos, criar listas vazias e '
-            'vincular ao compromisso na agenda quando fizer sentido.',
-      ),
-      const _TutorialStep(
-        icon: Icons.task_alt_rounded,
-        title: 'Tarefas',
-        body:
-            'Organize pendências com prazo, prioridade e responsável. Ideal para lembretes que não '
-            'cabem só na checklist de um show.',
-      ),
-      const _TutorialStep(
-        icon: Icons.person_rounded,
-        title: 'Meu espaço',
-        body:
-            'Ajuste dados do projeto, veja a página pública, convide integrantes (código de convite) '
-            'e gerencie quem acessa o hub. No celular, use a barra inferior; na tela larga, o menu à esquerda.',
+            'Em Banda ficam os integrantes, a caixa, os lançamentos e as checklists. '
+            'Convide pelo link. Quem entra diz o nome antes de cair no app.',
       ),
     ];
 

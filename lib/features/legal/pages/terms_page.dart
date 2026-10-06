@@ -41,7 +41,7 @@ class TermsPage extends StatelessWidget {
 Ao acessar e utilizar o ${AppConstants.appName} (${AppConstants.appTagline}), você concorda em cumprir e estar vinculado a estes Termos de Uso. Se você não concordar com estes termos, não utilize a plataforma.
 '''),
                   _section(context, '2. Descrição do Serviço', '''
-O ${AppConstants.appName} é um hub para organização da carreira musical independente. Artistas, bandas e gestores podem criar perfis para centralizar agenda, tarefas, checklists e lançamentos, com acesso antecipado a novas funcionalidades e conexão com oportunidades.
+O ${AppConstants.appName} organiza a rotina de artistas e bandas: agenda, tarefas, checklists, caixa e a página pública com bio, cidade, links e contato.
 '''),
                   _section(context, '3. Cadastro e Conta', '''
 Você declara ao cadastrar-se que:

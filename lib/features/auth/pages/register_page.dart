@@ -22,9 +22,9 @@ class RegisterPage extends ConsumerStatefulWidget {
 class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   bool _declarationAccepted = false;
   bool _isLoading = false;
   bool _isGoogleLoading = false;
@@ -33,9 +33,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -140,13 +140,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   String? _joinNext() => safeJoinPath(GoRouterState.of(context).uri.queryParameters['next']);
 
-  String? _confirmPassword(String? value) {
-    if (value != _passwordController.text) {
-      return 'As senhas não coincidem';
-    }
-    return Validators.password(value);
-  }
-
   Future<void> _submit() async {
     setState(() {
       _errorMessage = null;
@@ -180,6 +173,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               joining ? null : DateTime.now().toIso8601String(),
           referralSource: joining ? 'invite' : _referralFromRoute(),
         );
+        try {
+          await profileService.savePersonCard(displayName: _nameController.text);
+        } catch (_) {}
       }
       if (mounted) context.go(_joinNext() ?? '/complete-profile');
     } on Exception catch (e) {
@@ -214,6 +210,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           cred.user!.email ?? '',
           accountType: _joinNext() != null ? 'person' : 'band',
           referralSource: _joinNext() != null ? 'invite' : _referralFromRoute(),
+        );
+        await profileService.seedPersonNameIfEmpty(
+          cred.user!.uid,
+          cred.user!.displayName,
         );
       }
       if (mounted) context.go(_joinNext() ?? '/dashboard');
@@ -254,10 +254,42 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 32),
+                PPButton(
+                  label: 'Continuar com Google',
+                  icon: Icons.g_mobiledata_rounded,
+                  onPressed: _isLoading ? null : _signInWithGoogle,
+                  isLoading: _isGoogleLoading,
+                  fullWidth: true,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: AppColors.border)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('ou', style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                    Expanded(child: Divider(color: AppColors.border)),
+                  ],
+                ),
+                const SizedBox(height: 24),
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
+                      PPInput(
+                        label: 'Seu nome',
+                        hint: 'Como a banda te chama',
+                        controller: _nameController,
+                        validator: (v) {
+                          final name = v?.trim() ?? '';
+                          if (name.length < 2) return 'Use pelo menos 2 caracteres';
+                          if (name.length > 60) return 'Use no máximo 60 caracteres';
+                          return null;
+                        },
+                        onChanged: (_) => setState(() => _errorMessage = null),
+                      ),
+                      const SizedBox(height: 20),
                       PPInput(
                         label: 'Email',
                         hint: 'seu@email.com',
@@ -273,15 +305,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         controller: _passwordController,
                         obscureText: true,
                         validator: Validators.password,
-                        onChanged: (_) => setState(() => _errorMessage = null),
-                      ),
-                      const SizedBox(height: 20),
-                      PPInput(
-                        label: 'Confirmar senha',
-                        hint: 'Repita a senha',
-                        controller: _confirmPasswordController,
-                        obscureText: true,
-                        validator: _confirmPassword,
                         onChanged: (_) => setState(() => _errorMessage = null),
                       ),
                       if (_joinNext() == null) ...[
@@ -319,26 +342,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         onPressed: _submit,
                         isLoading: _isLoading,
                         fullWidth: true,
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: AppColors.border)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('ou', style: Theme.of(context).textTheme.bodySmall),
-                          ),
-                          Expanded(child: Divider(color: AppColors.border)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      PPButton(
-                        label: 'Continuar com Google',
-                        icon: Icons.g_mobiledata_rounded,
-                        onPressed: _isLoading ? null : _signInWithGoogle,
-                        isLoading: _isGoogleLoading,
-                        fullWidth: true,
-                        variant: PPButtonVariant.outline,
                       ),
                     ],
                   ),

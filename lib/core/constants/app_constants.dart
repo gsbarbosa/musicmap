@@ -17,6 +17,8 @@ class AppConstants {
   static const String referralQueryParam = 'ref';
   static const String referralLandingValue = 'landing';
   static const String usersPath = 'users';
+  /// Ficha da pessoa, legível por quem está logado: `people/{uid}`
+  static const String peoplePath = 'people';
   static const String profilesPath = 'profiles';
   static const String profilesByOwnerPath = 'profiles_by_owner';
   /// Acesso compartilhado: `user_profile_access/{uid}/{profileId}` → role, joinedAt
@@ -40,6 +42,8 @@ class AppConstants {
   static const String releasesPath = 'releases';
   /// Tarefas operacionais por perfil: `operational_tasks/{profileId}/{taskId}`
   static const String operationalTasksPath = 'operational_tasks';
+  /// Caixa da banda: `ledger/{profileId}/{entryId}`
+  static const String ledgerPath = 'ledger';
 
   /// Emails com acesso ao painel admin (export CSV). Opcional: use também `admin_users/{uid}` no Realtime Database.
   static const List<String> adminEmails = [];
@@ -49,6 +53,19 @@ class AppConstants {
   static const String artistTypeBand = 'banda';
 
   static const List<String> artistTypes = [artistTypeSolo, artistTypeBand];
+
+  /// Instrumentos da ficha da pessoa (valor gravado no RTDB)
+  static const List<String> instrumentOptions = [
+    'voz',
+    'guitarra',
+    'baixo',
+    'bateria',
+    'teclado',
+    'percussão',
+    'sopro',
+    'produção',
+    'técnico',
+  ];
 
   /// Web Client ID do Google OAuth (Firebase Console > Auth > Sign-in method > Google)
   static const String googleWebClientId =

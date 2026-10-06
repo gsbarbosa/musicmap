@@ -72,19 +72,12 @@ class DashboardOperationPanel extends ConsumerWidget {
         releasesAsync.hasError ||
         gigbagAsync.hasError ||
         tasksAsync.hasError) {
-      final detail = [
-        if (showsAsync.hasError) 'shows: ${showsAsync.error}',
-        if (releasesAsync.hasError) 'releases: ${releasesAsync.error}',
-        if (gigbagAsync.hasError) 'gigbag: ${gigbagAsync.error}',
-        if (tasksAsync.hasError) 'tasks: ${tasksAsync.error}',
-      ].join('\n');
       return PPCard(
         padding: const EdgeInsets.all(16),
         child: PPErrorState(
           title: 'Painel indisponível',
           message:
-              'Não foi possível carregar uma ou mais partes do resumo. Tente novamente.',
-          debugDetails: detail,
+              'Não foi possível carregar o que a banda tem para hoje. Tente de novo.',
           onRetry: () {
             ref.invalidate(showsStreamProvider(profileId));
             ref.invalidate(releasesStreamProvider(profileId));
@@ -124,7 +117,7 @@ class DashboardOperationPanel extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Painel da operação',
+          'Agora',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -135,12 +128,10 @@ class DashboardOperationPanel extends ConsumerWidget {
           child: upcomingRows.isEmpty
               ? _emptyBlock(
                   context,
-                  'Nada agendado à frente.',
-                  'Cadastre um show ou um lançamento para ver datas importantes aqui.',
+                  'Nada marcado',
+                  'O próximo ensaio ou show aparece aqui.',
                   onPrimary: () => context.push('/shows/$profileId'),
-                  primaryLabel: 'Agendar show',
-                  onSecondary: () => context.push('/releases/$profileId'),
-                  secondaryLabel: 'Planejar lançamento',
+                  primaryLabel: 'Marque o próximo ensaio',
                 )
               : _upcomingCommitmentsCarousel(context, upcomingRows.take(8).toList()),
         ),

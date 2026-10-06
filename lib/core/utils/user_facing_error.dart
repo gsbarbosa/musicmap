@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
-
-/// Evita expor exceções brutas em produção; mantém detalhe em debug.
+/// A tela mostra só a frase em português. O detalhe técnico fica no log.
 String userFacingErrorSuffix(Object? error) {
-  if (!kDebugMode || error == null) return '';
-  return ' (${error.toString()})';
+  if (error == null) return '';
+  return '';
 }
