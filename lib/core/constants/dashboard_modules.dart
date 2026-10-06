@@ -70,6 +70,16 @@ class DashboardModuleConfig {
       routePattern: '/releases',
       journeyStep: 4,
     ),
+    DashboardModuleConfig(
+      key: 'ledger',
+      title: 'Caixa da banda',
+      description:
+          'Lance despesas e cachês, divida entre quem estava e veja quem deve quem.',
+      icon: Icons.account_balance_wallet_rounded,
+      status: DashboardModuleStatus.enabled,
+      routePattern: '/caixa',
+      journeyStep: 5,
+    ),
   ];
 
   /// Ideias e expansões futuras — separadas na UI dos módulos ativos

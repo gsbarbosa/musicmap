@@ -103,6 +103,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             accountType: _joinNext() != null ? 'person' : 'band',
             referralSource: _joinNext() != null ? 'invite' : _referralFromRoute(),
           );
+          await profileService.seedPersonNameIfEmpty(
+            cred.user!.uid,
+            cred.user!.displayName,
+          );
         }
       }
       if (mounted) {
@@ -145,10 +149,29 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Text(
                   _joinNext() != null
                       ? 'Sua conta já basta para entrar na banda. O perfil do projeto continua com quem te convidou.'
-                      : 'Acesse o hub com email e senha ou com sua conta Google.',
+                      : 'Entre com Google. Se preferir, use email e senha.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 32),
+                PPButton(
+                  label: 'Continuar com Google',
+                  icon: Icons.g_mobiledata_rounded,
+                  onPressed: _isLoading ? null : _signInWithGoogle,
+                  isLoading: _isGoogleLoading,
+                  fullWidth: true,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: AppColors.border)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('ou', style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                    Expanded(child: Divider(color: AppColors.border)),
+                  ],
+                ),
+                const SizedBox(height: 24),
                 Form(
                   key: _formKey,
                   child: Column(
@@ -207,26 +230,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         isLoading: _isLoading,
                         fullWidth: true,
                       ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: AppColors.border)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('ou', style: Theme.of(context).textTheme.bodySmall),
-                          ),
-                          Expanded(child: Divider(color: AppColors.border)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      PPButton(
-                        label: 'Continuar com Google',
-                        icon: Icons.g_mobiledata_rounded,
-                        onPressed: _isLoading ? null : _signInWithGoogle,
-                        isLoading: _isGoogleLoading,
-                        fullWidth: true,
-                        variant: PPButtonVariant.outline,
-                      ),
                     ],
                   ),
                 ),
@@ -248,7 +251,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         );
                       },
                       child: const Text(
-                        'Criar perfil',
+                        'Criar conta',
                         style: TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w600,

@@ -10,6 +10,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/firebase/app_firebase_database.dart';
 import '../../../../core/firebase/rtdb_rest_client.dart';
 import '../../../../core/utils/profile_lookup.dart';
+import '../../../../shared/models/person_card.dart';
 import '../../../../shared/models/profile_member.dart';
 import '../../../../shared/models/user_profile.dart';
 
@@ -445,6 +446,219 @@ class ProfileService {
     return 0;
   }
 
+  /// Ficha pública da pessoa. `null` quando ainda não foi preenchida.
+  Future<PersonCard?> getPerson(String userId) async {
+    if (userId.isEmpty) return null;
+    final dynamic raw;
+    if (kIsWeb) {
+      raw = await RtdbRestClient.getJson('${AppConstants.peoplePath}/$userId');
+    } else {
+      final snap = await _db.child(AppConstants.peoplePath).child(userId).get();
+      raw = snap.value;
+    }
+    if (raw is! Map) return null;
+    return PersonCard.fromMap(userId, Map<String, dynamic>.from(raw));
+  }
+
+  /// Grava a ficha do usuário logado e copia o nome nas bandas das quais ele já é membro.
+  Future<void> savePersonCard({
+    required String displayName,
+    List<String> instruments = const [],
+    String city = '',
+    String state = '',
+  }) async {
+    await _refreshAuthTokenForRtdb();
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final name = displayName.trim();
+    if (name.length < 2 || name.length > 60) {
+      throw StateError('invalid_display_name');
+    }
+    final allowed = instruments
+        .map((e) => e.trim())
+        .where(AppConstants.instrumentOptions.contains)
+        .toSet()
+        .toList();
+    final uf = state.trim().toUpperCase();
+    if (uf.isNotEmpty && uf.length != 2) {
+      throw StateError('invalid_state');
+    }
+    final existing = await getPerson(uid);
+    final now = DateTime.now();
+    final card = PersonCard(
+      userId: uid,
+      displayName: name,
+      instruments: allowed,
+      city: city.trim(),
+      state: uf,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    );
+    final path = '${AppConstants.peoplePath}/$uid';
+    if (kIsWeb) {
+      await RtdbRestClient.putJson(path, card.toMap());
+    } else {
+      await _db.child(AppConstants.peoplePath).child(uid).set(card.toMap());
+    }
+    await _syncPersonOntoMemberships(
+      uid,
+      displayName: name,
+      instruments: allowed,
+      city: city.trim(),
+      state: uf,
+      email: FirebaseAuth.instance.currentUser?.email,
+    );
+  }
+
+  /// Grava o email da conta nas bandas em que a pessoa já entrou.
+  Future<void> publishOwnEmailToBands() async {
+    final email = FirebaseAuth.instance.currentUser?.email?.trim() ?? '';
+    if (email.isEmpty) return;
+    await _syncPersonOntoMemberships(
+      FirebaseAuth.instance.currentUser!.uid,
+      email: email,
+    );
+  }
+
+  /// Usa o nome da conta Google só quando a ficha ainda não tem nome.
+  Future<void> seedPersonNameIfEmpty(String userId, String? name) async {
+    try {
+      final trimmed = name?.trim() ?? '';
+      if (trimmed.length < 2) return;
+      final current = FirebaseAuth.instance.currentUser;
+      if (current == null || current.uid != userId) return;
+      final existing = await getPerson(userId);
+      if (existing != null && existing.hasName) return;
+      await savePersonCard(displayName: trimmed);
+    } catch (_) {}
+  }
+
+  Future<void> _syncPersonOntoMemberships(
+    String userId, {
+    String? displayName,
+    List<String>? instruments,
+    String? city,
+    String? state,
+    String? email,
+  }) async {
+    final dynamic raw;
+    if (kIsWeb) {
+      raw = await RtdbRestClient.getJson('${AppConstants.userProfileAccessPath}/$userId');
+    } else {
+      final snap = await _db.child(AppConstants.userProfileAccessPath).child(userId).get();
+      raw = snap.value;
+    }
+    if (raw is! Map) return;
+    for (final key in raw.keys) {
+      final profileId = key.toString();
+      if (profileId.isEmpty) continue;
+      final memberPath = '${AppConstants.profileMembersPath}/$profileId/$userId';
+      final dynamic memberRaw;
+      if (kIsWeb) {
+        memberRaw = await RtdbRestClient.getJson(memberPath);
+      } else {
+        final memberSnap = await _db.child(AppConstants.profileMembersPath).child(profileId).child(userId).get();
+        memberRaw = memberSnap.value;
+      }
+      if (memberRaw is! Map) continue;
+      final patch = <String, dynamic>{};
+      final name = displayName?.trim() ?? '';
+      if (name.length >= 2) patch['displayName'] = name;
+      if (instruments != null) patch['instruments'] = instruments;
+      if (city != null) patch['city'] = city.trim();
+      if (state != null) patch['state'] = state.trim().toUpperCase();
+      final mail = email?.trim() ?? '';
+      if (mail.isNotEmpty) patch['email'] = mail;
+      if (patch.isEmpty) continue;
+      if (kIsWeb) {
+        await RtdbRestClient.patchJson(memberPath, patch);
+      } else {
+        await _db
+            .child(AppConstants.profileMembersPath)
+            .child(profileId)
+            .child(userId)
+            .update(patch);
+      }
+    }
+  }
+
+  /// Dono e integrantes do projeto que já têm ficha com nome.
+  Future<Map<String, PersonCard>> loadPeopleForProject(String profileId) async {
+    final profile = await getProfile(profileId);
+    final members = await listProfileMemberEntries(profileId);
+    final uids = <String>{
+      if (profile != null && profile.ownerUserId.isNotEmpty) profile.ownerUserId,
+      ...members.keys,
+    };
+    final out = <String, PersonCard>{};
+    for (final uid in uids) {
+      try {
+        final person = await getPerson(uid);
+        if (person != null && person.hasName) {
+          out[uid] = person;
+          continue;
+        }
+      } catch (_) {}
+      final membership = members[uid];
+      final membershipName = membership?.displayName.trim() ?? '';
+      if (membershipName.length < 2) continue;
+      final now = DateTime.now();
+      out[uid] = PersonCard(
+        userId: uid,
+        displayName: membershipName,
+        instruments: membership?.instruments ?? const [],
+        city: membership?.city ?? '',
+        state: membership?.state ?? '',
+        createdAt: membership?.joinedAt ?? now,
+        updatedAt: now,
+      );
+    }
+    return out;
+  }
+
+  /// Dono ou admin preenche a ficha do integrante nesta banda.
+  /// A ficha pessoal, quando a pessoa salvar a dela, continua tendo prioridade.
+  Future<void> saveMemberFicha({
+    required String profileId,
+    required String memberUid,
+    required String displayName,
+    List<String> instruments = const [],
+    String city = '',
+    String state = '',
+  }) async {
+    await _refreshAuthTokenForRtdb();
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    if (!await canManageMembers(uid, profileId)) throw StateError('forbidden');
+    final profile = await getProfile(profileId);
+    if (profile != null && profile.ownerUserId == memberUid) {
+      throw StateError('cannot_edit_owner');
+    }
+    final name = displayName.trim();
+    if (name.length < 2 || name.length > 60) {
+      throw StateError('invalid_display_name');
+    }
+    final allowed = instruments
+        .map((e) => e.trim())
+        .where(AppConstants.instrumentOptions.contains)
+        .toSet()
+        .toList();
+    final uf = state.trim().toUpperCase();
+    if (uf.isNotEmpty && uf.length != 2) {
+      throw StateError('invalid_state');
+    }
+    final patch = <String, dynamic>{
+      'displayName': name,
+      'instruments': allowed,
+      'city': city.trim(),
+      'state': uf,
+    };
+    final memberPath = '${AppConstants.profileMembersPath}/$profileId/$memberUid';
+    if (kIsWeb) {
+      await RtdbRestClient.patchJson(memberPath, patch);
+    } else {
+      await _db.child(AppConstants.profileMembersPath).child(profileId).child(memberUid).update(patch);
+    }
+  }
+
   /// Retorna o tipo de conta do usuário
   Future<String> getUserAccountType(String userId) async {
     final snapshot = await _db.child(AppConstants.usersPath).child(userId).get();
@@ -636,9 +850,11 @@ class ProfileService {
       return {'ok': true, 'profileId': profileId, 'alreadyMember': true};
     }
 
+    final email = FirebaseAuth.instance.currentUser?.email?.trim() ?? '';
     final member = <String, dynamic>{
       'role': role,
       'joinedAt': DateTime.now().toIso8601String(),
+      if (email.isNotEmpty) 'email': email,
     };
     try {
       await _writeJson('${AppConstants.userProfileAccessPath}/$uid/$profileId', member);
@@ -669,9 +885,15 @@ class ProfileService {
 
   /// Membros com linha em `profile_members` (não inclui o dono, que vem do perfil)
   Future<Map<String, ProfileMemberEntry>> listProfileMemberEntries(String profileId) async {
-    final snap = await _db.child(AppConstants.profileMembersPath).child(profileId).get();
-    if (!snap.exists || snap.value == null) return {};
-    final raw = Map<String, dynamic>.from(snap.value as Map);
+    final dynamic rawValue;
+    if (kIsWeb) {
+      rawValue = await RtdbRestClient.getJson('${AppConstants.profileMembersPath}/$profileId');
+    } else {
+      final snap = await _db.child(AppConstants.profileMembersPath).child(profileId).get();
+      rawValue = snap.value;
+    }
+    if (rawValue is! Map) return {};
+    final raw = Map<String, dynamic>.from(rawValue);
     return raw.map(
       (k, v) => MapEntry(
         k,

@@ -1,4 +1,3 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,8 +23,6 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
   final _scrollController = ScrollController();
   bool _isLoading = false;
   String? _errorMessage;
-  /// Detalhe técnico (ex.: código Firebase) para colar no suporte / Console
-  String? _errorDetail;
 
   @override
   void dispose() {
@@ -37,7 +34,6 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _errorDetail = null;
     });
 
     final profileService = ref.read(profileServiceProvider);
@@ -112,12 +108,8 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
       if (kIsWeb) {
         print('[CompleteProfile] saveProfile: $e');
       }
-      final detail = e is FirebaseException
-          ? '${e.plugin}/${e.code}: ${e.message}'
-          : e.toString();
       setState(() {
         _errorMessage = firebaseRtdbSaveUserMessage(e);
-        _errorDetail = detail.length > 400 ? '${detail.substring(0, 400)}…' : detail;
         _isLoading = false;
       });
     }
@@ -177,24 +169,13 @@ class _CompleteProfilePageState extends ConsumerState<CompleteProfilePage> {
                           ),
                         ],
                       ),
-                      if (_errorDetail != null) ...[
-                        const SizedBox(height: 8),
-                        SelectableText(
-                          _errorDetail!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                                fontFamily: 'monospace',
-                                fontSize: 11,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'No Chrome: F12 → aba Console e filtre por [CompleteProfile].',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                        ),
-                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Confira os dados e tente de novo. Se continuar, saia e entre outra vez.',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
                     ],
                   ),
                 ),

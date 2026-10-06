@@ -204,9 +204,13 @@ exports.acceptInvite = functions.https.onCall(async (data, context) => {
     return { ok: true, profileId, alreadyMember: true };
   }
   const joinedAt = new Date().toISOString();
+  const personSnap = await db.ref(`people/${uid}/displayName`).once('value');
+  const displayName = typeof personSnap.val() === 'string' ? personSnap.val().trim() : '';
+  const member = { role, joinedAt };
+  if (displayName.length >= 2) member.displayName = displayName;
   const updates = {};
   updates[`user_profile_access/${uid}/${profileId}`] = { role, joinedAt };
-  updates[`profile_members/${profileId}/${uid}`] = { role, joinedAt };
+  updates[`profile_members/${profileId}/${uid}`] = member;
   updates[`invite_by_code/${token}/uses`] = uses + 1;
   await db.ref().update(updates);
   return { ok: true, profileId, role };

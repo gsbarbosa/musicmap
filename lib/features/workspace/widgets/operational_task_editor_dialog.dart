@@ -7,8 +7,31 @@ import '../../../shared/models/artist_show.dart';
 import '../../../shared/models/gigbag_checklist.dart';
 import '../../../shared/models/music_release.dart';
 import '../../../shared/models/operational_task.dart';
+import '../../../shared/models/person_card.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/widgets/pp_input.dart';
+
+List<DropdownMenuItem<String>> _rosterItems(Map<String, PersonCard> roster) {
+  final entries = roster.entries.toList()
+    ..sort((a, b) => a.value.displayName.toLowerCase().compareTo(b.value.displayName.toLowerCase()));
+  return [
+    for (final entry in entries)
+      DropdownMenuItem(
+        value: entry.key,
+        child: Text(entry.value.displayName),
+      ),
+  ];
+}
+
+String _assigneeLabel(
+  String selected,
+  Map<String, PersonCard> roster,
+  OperationalTask? existing,
+) {
+  if (selected == '__legacy__') return existing?.assignee.trim() ?? '';
+  if (selected.isEmpty) return '';
+  return roster[selected]?.displayName ?? existing?.assignee.trim() ?? '';
+}
 
 String _formatTaskDate(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -36,7 +59,14 @@ Future<void> showOperationalTaskEditor(
   final svc = ref.read(artistWorkspaceServiceProvider);
   final titleCtrl = TextEditingController(text: existing?.title ?? '');
   final descCtrl = TextEditingController(text: existing?.description ?? '');
-  final assigneeCtrl = TextEditingController(text: existing?.assignee ?? '');
+  var roster = <String, PersonCard>{};
+  try {
+    roster = await ref.read(profileServiceProvider).loadPeopleForProject(profile.id);
+  } catch (_) {}
+  final legacyAssignee = existing != null &&
+      existing.assigneeUserId.isEmpty &&
+      existing.assignee.trim().isNotEmpty;
+  var selectedAssignee = legacyAssignee ? '__legacy__' : (existing?.assigneeUserId ?? '');
   var priority = existing?.priority ?? OperationalTask.priorityMedium;
   var status = existing?.status ?? OperationalTask.statusOpen;
   DateTime? due = existing?.dueDate;
@@ -44,6 +74,7 @@ Future<void> showOperationalTaskEditor(
   String? linkedRelease = existing?.linkedReleaseId;
   String? linkedChecklist = existing?.linkedChecklistId;
 
+  if (!context.mounted) return;
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -57,7 +88,41 @@ Future<void> showOperationalTaskEditor(
               const SizedBox(height: 12),
               PPInput(label: 'Descrição (opcional)', controller: descCtrl, maxLines: 3),
               const SizedBox(height: 12),
-              PPInput(label: 'Responsável', controller: assigneeCtrl, hint: 'Nome ou função'),
+              DropdownButtonFormField<String>(
+                value: selectedAssignee,
+                decoration: const InputDecoration(labelText: 'Responsável'),
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('Sem responsável')),
+                  if (legacyAssignee)
+                    DropdownMenuItem(
+                      value: '__legacy__',
+                      child: Text(existing.assignee),
+                    ),
+                  ..._rosterItems(roster),
+                  if (selectedAssignee.isNotEmpty &&
+                      selectedAssignee != '__legacy__' &&
+                      !roster.containsKey(selectedAssignee))
+                    DropdownMenuItem(
+                      value: selectedAssignee,
+                      child: Text(
+                        (existing?.assignee.trim().isNotEmpty ?? false)
+                            ? existing!.assignee
+                            : 'Integrante',
+                      ),
+                    ),
+                ],
+                onChanged: (v) => setSt(() => selectedAssignee = v ?? ''),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  roster.isEmpty
+                      ? 'Os nomes aparecem depois que cada integrante salva a ficha.'
+                      : 'A lista usa a ficha de cada integrante.',
+                  style: Theme.of(ctx).textTheme.bodySmall,
+                ),
+              ),
               const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -209,7 +274,8 @@ Future<void> showOperationalTaskEditor(
     profileId: profile.id,
     title: titleCtrl.text.trim(),
     description: descCtrl.text.trim(),
-    assignee: assigneeCtrl.text.trim(),
+    assignee: _assigneeLabel(selectedAssignee, roster, existing),
+    assigneeUserId: selectedAssignee == '__legacy__' ? '' : selectedAssignee,
     dueDate: due,
     priority: priority,
     status: status,

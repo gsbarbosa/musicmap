@@ -8,12 +8,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/user_facing_error.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/widgets/page_container.dart';
-import '../../../shared/widgets/pp_badge.dart';
 import '../../../shared/widgets/pp_button.dart';
 import '../../../shared/widgets/pp_card.dart';
 import '../../../shared/widgets/pp_error_state.dart';
 import '../../../shared/widgets/workspace_page_scaffold.dart';
-import '../../dashboard/widgets/brazil_map_widget.dart';
 import '../../dashboard/widgets/dashboard_gamification.dart';
 
 /// Página "Meu espaço" — visão geral, progresso, links públicos, resumo e conta
@@ -52,6 +50,14 @@ class ArtistProfilePage extends ConsumerWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
+                    PPButton(
+                      label: 'Minha ficha',
+                      icon: Icons.badge_outlined,
+                      onPressed: () => context.push('/eu'),
+                      variant: PPButtonVariant.outline,
+                      fullWidth: true,
+                    ),
+                    const SizedBox(height: 12),
                     PPButton(
                       label: 'Entrar com convite',
                       icon: Icons.group_add_rounded,
@@ -106,41 +112,38 @@ class _ArtistProfileBody extends ConsumerStatefulWidget {
 }
 
 class _ArtistProfileBodyState extends ConsumerState<_ArtistProfileBody> {
-  int _selectedIndex = 0;
-
-  UserProfile get _selectedProfile => widget.profiles[_selectedIndex];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final syncId = ref.read(dashboardWorkspaceProfileIdProvider);
-      if (!mounted || syncId == null) return;
-      final i = widget.profiles.indexWhere((p) => p.id == syncId);
-      if (i >= 0 && i != _selectedIndex) {
-        setState(() => _selectedIndex = i);
-      }
-    });
+  UserProfile get _selectedProfile {
+    final id = ref.watch(dashboardWorkspaceProfileIdProvider);
+    return widget.profiles.firstWhere(
+      (profile) => profile.id == id,
+      orElse: () => widget.profiles.first,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final person = ref.watch(personCardProvider(widget.userId)).valueOrNull;
+    final personLine = _personLine(person?.displayName, person?.instruments ?? const []);
     return WorkspacePageScaffold(
-      title: 'Meu espaço no hub',
-      subtitle: 'Visão geral, progresso, página pública e conta',
+      title: 'Banda',
+      subtitle: _selectedProfile.artistName,
       body: Column(
         children: [
-          if (widget.profiles.length > 1) _buildProfileSelector(context),
-          _buildMainContent(context),
-          _buildMapSection(context, ref),
+          _buildMainContent(context, personLine),
           _buildGamification(context),
-          _buildStatusCard(context),
           _buildProfileSummary(context),
           _buildAccountSection(context, ref),
           _buildActions(context, ref),
         ],
       ),
     );
+  }
+
+  String _personLine(String? name, List<String> instruments) {
+    final trimmed = name?.trim() ?? '';
+    final who = trimmed.length >= 2 ? trimmed : 'Sua ficha ainda não tem nome';
+    if (instruments.isEmpty) return who;
+    return '$who · ${instruments.join(', ')}';
   }
 
   Widget _buildGamification(BuildContext context) {
@@ -267,66 +270,10 @@ class _ArtistProfileBodyState extends ConsumerState<_ArtistProfileBody> {
     }
   }
 
-  Widget _buildProfileSelector(BuildContext context) {
-    final isBandAccount = ref.watch(userAccountTypeProvider(widget.userId)).valueOrNull == 'band';
-    if (isBandAccount) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      child: PageContainer(
-        maxWidth: 600,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Seus perfis',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(widget.profiles.length, (i) {
-                final p = widget.profiles[i];
-                final selected = _selectedIndex == i;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedIndex = i);
-                    ref.read(dashboardWorkspaceProfileIdProvider.notifier).state =
-                        p.id;
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.primary.withValues(alpha: 0.2)
-                          : AppColors.surfaceSecondary,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: selected ? AppColors.primary : AppColors.border,
-                      ),
-                    ),
-                    child: Text(
-                      p.artistName,
-                      style: TextStyle(
-                        fontWeight: selected ? FontWeight.w600 : null,
-                        color: selected ? AppColors.primary : null,
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMainContent(BuildContext context) {
+  Widget _buildMainContent(BuildContext context, String personLine) {
+    final location = [_selectedProfile.city, _selectedProfile.state]
+        .where((part) => part.trim().isNotEmpty)
+        .join(' · ');
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -336,117 +283,39 @@ class _ArtistProfileBodyState extends ConsumerState<_ArtistProfileBody> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: const [
-                PPBadge(label: 'Early Access', variant: PPBadgeVariant.primary),
-                PPBadge(label: 'Cena fundadora', variant: PPBadgeVariant.secondary),
-              ],
-            ),
-            const SizedBox(height: 24),
             Text(
               _selectedProfile.artistName,
-              style: Theme.of(context).textTheme.displaySmall,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
-            const SizedBox(height: 24),
+            if (location.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                location,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+            ],
+            const SizedBox(height: 16),
             Text(
-              'Seu acesso antecipado está garantido',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppColors.primary,
+              personLine,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Text(
-              'Você já faz parte da base inicial do Music Map — o hub onde sua operação musical se organiza. '
-              'Estamos evoluindo a plataforma para conectar artistas, bandas e oportunidades. '
-              'Novidades em breve.',
+              'Aqui ficam a ficha, os integrantes e o que a banda usa fora da agenda: caixa, lançamentos e checklists.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppColors.textSecondary,
+                    height: 1.45,
                   ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMapSection(BuildContext context, WidgetRef ref) {
-    final countsAsync = ref.watch(mapLocationCountsProvider);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: PageContainer(
-        maxWidth: 700,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 24),
-            countsAsync.when(
-              data: (counts) => BrazilMapWidget(stateCounts: counts),
-              loading: () => Container(
-                height: 320,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceSecondary,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      child: PageContainer(
-        maxWidth: 600,
-        child: PPCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Status',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 24,
-                runSpacing: 16,
-                children: [
-                  _statusItem(context, 'Status', 'Ativo', AppColors.success),
-                  _statusItem(context, 'Fase', 'Acesso antecipado', AppColors.primary),
-                  _statusItem(context, 'Hub', 'Ativo', AppColors.secondary),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _statusItem(BuildContext context, String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(color: color),
-        ),
-      ],
     );
   }
 
@@ -553,9 +422,33 @@ class _ArtistProfileBodyState extends ConsumerState<_ArtistProfileBody> {
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
+              onPressed: () => context.push('/eu'),
+              icon: const Icon(Icons.badge_outlined),
+              label: const Text('Minha ficha'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
               onPressed: () => context.push('/project-members/${_selectedProfile.id}'),
               icon: const Icon(Icons.group_rounded),
               label: const Text('Integrantes'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/caixa/${_selectedProfile.id}'),
+              icon: const Icon(Icons.account_balance_wallet_rounded),
+              label: const Text('Caixa'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/releases/${_selectedProfile.id}'),
+              icon: const Icon(Icons.album_rounded),
+              label: const Text('Lançamentos'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/gigbag/${_selectedProfile.id}'),
+              icon: const Icon(Icons.checklist_rounded),
+              label: const Text('Checklists'),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -567,7 +460,7 @@ class _ArtistProfileBodyState extends ConsumerState<_ArtistProfileBody> {
             OutlinedButton.icon(
               onPressed: () => context.go('/dashboard'),
               icon: const Icon(Icons.dashboard_rounded),
-              label: const Text('Voltar ao painel'),
+              label: const Text('Voltar para hoje'),
             ),
           ],
         ),

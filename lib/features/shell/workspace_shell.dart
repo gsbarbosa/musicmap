@@ -25,17 +25,34 @@ class WorkspaceShell extends ConsumerStatefulWidget {
 class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
   String? _lastPath;
 
+  static const _scopedHeads = {
+    'shows',
+    'tasks',
+    'releases',
+    'gigbag',
+    'caixa',
+    'project-members',
+    'edit-profile',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref.read(profileServiceProvider).publishOwnEmailToBands();
+        final id = ref.read(dashboardWorkspaceProfileIdProvider);
+        if (id != null) ref.invalidate(profileMembersMapProvider(id));
+      } catch (_) {}
+    });
+  }
+
   void _syncWorkspaceFromRoute(String path) {
     final parts = path.split('/').where((s) => s.isNotEmpty).toList();
-    if (parts.length >= 2) {
-      final head = parts[0];
-      if (head == 'shows' || head == 'tasks' || head == 'releases' || head == 'gigbag') {
-        final pid = parts[1];
-        if (pid != 'checklist') {
-          ref.read(dashboardWorkspaceProfileIdProvider.notifier).state = pid;
-        }
-      } else if (head == 'project-members') {
-        ref.read(dashboardWorkspaceProfileIdProvider.notifier).state = parts[1];
+    if (parts.length >= 2 && _scopedHeads.contains(parts[0])) {
+      final pid = parts[1];
+      if (pid != 'checklist') {
+        ref.read(dashboardWorkspaceProfileIdProvider.notifier).state = pid;
       }
     }
   }
@@ -43,11 +60,8 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
   int _railIndex(String path) {
     if (path.startsWith('/dashboard')) return 0;
     if (path.startsWith('/shows/')) return 1;
-    if (path.startsWith('/releases/')) return 2;
-    if (path.startsWith('/gigbag/')) return 3;
-    if (path.startsWith('/tasks/')) return 4;
-    if (path == '/perfil' || path.startsWith('/edit-profile')) return 5;
-    return 0;
+    if (path.startsWith('/tasks/')) return 2;
+    return 3;
   }
 
   void _goRail(BuildContext context, int index, String profileId) {
@@ -59,18 +73,32 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
         context.go('/shows/$profileId');
         break;
       case 2:
-        context.go('/releases/$profileId');
-        break;
-      case 3:
-        context.go('/gigbag/$profileId');
-        break;
-      case 4:
         context.go('/tasks/$profileId');
         break;
-      case 5:
+      default:
         context.go('/perfil');
         break;
     }
+  }
+
+  void _selectProfile(BuildContext context, String id) {
+    ref.read(dashboardWorkspaceProfileIdProvider.notifier).state = id;
+    final parts = GoRouterState.of(context)
+        .matchedLocation
+        .split('/')
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (parts.isEmpty || !_scopedHeads.contains(parts[0])) return;
+    final head = parts[0];
+    if (head == 'edit-profile') {
+      context.go('/edit-profile/$id');
+      return;
+    }
+    if (head == 'shows' || (head == 'gigbag' && parts.length > 2)) {
+      context.go('/$head/$id');
+      return;
+    }
+    context.go('/$head/$id');
   }
 
   @override
@@ -134,19 +162,7 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
                         activeProfileId: profileId,
                         activeName: active.artistName,
                         isAdmin: isAdmin,
-                        onProfileSelected: (id) {
-                          ref.read(dashboardWorkspaceProfileIdProvider.notifier).state = id;
-                          final loc = GoRouterState.of(context).matchedLocation;
-                          if (loc.startsWith('/shows/')) {
-                            context.go('/shows/$id');
-                          } else if (loc.startsWith('/gigbag/')) {
-                            context.go('/gigbag/$id');
-                          } else if (loc.startsWith('/tasks/')) {
-                            context.go('/tasks/$id');
-                          } else if (loc.startsWith('/releases/')) {
-                            context.go('/releases/$id');
-                          }
-                        },
+                        onProfileSelected: (id) => _selectProfile(context, id),
                       ),
                       Expanded(
                         child: ClipRRect(
@@ -187,18 +203,16 @@ class _WorkspaceRail extends StatelessWidget {
   final ValueChanged<int> onSelect;
 
   static const _destinations = [
-    _RailItem(Icons.explore_rounded, 'Central'),
-    _RailItem(Icons.event_rounded, 'Compromisso'),
-    _RailItem(Icons.album_rounded, 'Lançamentos'),
-    _RailItem(Icons.checklist_rounded, 'GigBag'),
+    _RailItem(Icons.today_rounded, 'Hoje'),
+    _RailItem(Icons.event_rounded, 'Agenda'),
     _RailItem(Icons.task_alt_rounded, 'Tarefas'),
-    _RailItem(Icons.person_rounded, 'Meu espaço'),
+    _RailItem(Icons.groups_rounded, 'Banda'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 88,
+      width: 104,
       decoration: BoxDecoration(
         color: AppColors.surface.withValues(alpha: 0.6),
         border: Border(
@@ -317,7 +331,7 @@ class _WorkspaceTopBar extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'PROJETO ATIVO NO HUB',
+                    'BANDA',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: AppColors.textSecondary,
                           letterSpacing: 0.6,
@@ -471,31 +485,20 @@ class _WorkspaceBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NavigationBar(
-      selectedIndex: selectedIndex.clamp(0, 5),
-      height: 68,
+      selectedIndex: selectedIndex.clamp(0, 3),
       backgroundColor: AppColors.surface,
       indicatorColor: AppColors.primary.withValues(alpha: 0.2),
       onDestinationSelected: onSelect,
       destinations: const [
         NavigationDestination(
-          icon: Icon(Icons.explore_outlined, color: AppColors.textSecondary),
-          selectedIcon: Icon(Icons.explore_rounded, color: AppColors.primary),
-          label: 'Central',
+          icon: Icon(Icons.today_outlined, color: AppColors.textSecondary),
+          selectedIcon: Icon(Icons.today_rounded, color: AppColors.primary),
+          label: 'Hoje',
         ),
         NavigationDestination(
           icon: Icon(Icons.event_outlined),
           selectedIcon: Icon(Icons.event_rounded),
-          label: 'Comprom.',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.album_outlined),
-          selectedIcon: Icon(Icons.album_rounded),
-          label: 'Lanç.',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.checklist_outlined),
-          selectedIcon: Icon(Icons.checklist_rounded),
-          label: 'GigBag',
+          label: 'Agenda',
         ),
         NavigationDestination(
           icon: Icon(Icons.task_alt_outlined),
@@ -503,9 +506,9 @@ class _WorkspaceBottomNav extends StatelessWidget {
           label: 'Tarefas',
         ),
         NavigationDestination(
-          icon: Icon(Icons.person_outline_rounded),
-          selectedIcon: Icon(Icons.person_rounded),
-          label: 'Espaço',
+          icon: Icon(Icons.groups_outlined),
+          selectedIcon: Icon(Icons.groups_rounded),
+          label: 'Banda',
         ),
       ],
     );

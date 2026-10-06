@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
@@ -27,9 +28,12 @@ class JoinProjectPage extends ConsumerStatefulWidget {
 
 class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
   final _codeCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final Set<String> _instruments = {};
   bool _loading = false;
   bool _started = false;
   String? _error;
+  String? _identityProfileId;
 
   bool get _fromLink => widget.token != null && widget.token!.trim().isNotEmpty;
 
@@ -44,6 +48,7 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
   @override
   void dispose() {
     _codeCtrl.dispose();
+    _nameCtrl.dispose();
     super.dispose();
   }
 
@@ -79,7 +84,24 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
       if (profileId != null && profileId.isNotEmpty) {
         ref.read(dashboardWorkspaceProfileIdProvider.notifier).state = profileId;
       }
+      final person = await ref.read(profileServiceProvider).getPerson(uid);
+      final needsName = person == null || !person.hasName || person.instruments.isEmpty;
+      final skippedIdentity = result['alreadyOwner'] == true;
       if (!mounted) return;
+      if (needsName && !skippedIdentity && profileId != null && profileId.isNotEmpty) {
+        final suggested = person?.displayName.trim().isNotEmpty == true
+            ? person!.displayName
+            : (FirebaseAuth.instance.currentUser?.displayName ?? '');
+        _nameCtrl.text = suggested;
+        _instruments
+          ..clear()
+          ..addAll(person?.instruments ?? const []);
+        setState(() {
+          _loading = false;
+          _identityProfileId = profileId;
+        });
+        return;
+      }
       context.go('/dashboard');
     } on FirebaseFunctionsException catch (e) {
       _started = false;
@@ -91,7 +113,7 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
       _started = false;
       setState(() {
         _loading = false;
-        _error = 'Não foi possível entrar no projeto. Tente de novo.';
+        _error = 'Não foi possível entrar na banda. Abra o link de novo ou peça outro convite.';
       });
     }
   }
@@ -142,8 +164,42 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
     }
   }
 
+  Future<void> _saveIdentity() async {
+    final name = _nameCtrl.text.trim();
+    if (name.length < 2) {
+      setState(() => _error = 'Diga como a banda te chama.');
+      return;
+    }
+    if (_instruments.isEmpty) {
+      setState(() => _error = 'Escolha pelo menos um instrumento.');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await ref.read(profileServiceProvider).savePersonCard(
+            displayName: name,
+            instruments: _instruments.toList(),
+          );
+      if (!mounted) return;
+      context.go('/dashboard');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Não foi possível salvar. Tente de novo.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_identityProfileId != null) {
+      return _buildIdentity(context);
+    }
+
     if (_fromLink && FirebaseAuth.instance.currentUser == null) {
       return _buildInviteLanding(context);
     }
@@ -157,6 +213,85 @@ class _JoinProjectPageState extends ConsumerState<JoinProjectPage> {
     }
 
     return _buildCodeForm(context);
+  }
+
+  Widget _buildIdentity(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.landingAura),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+            child: PageContainer(
+              maxWidth: 460,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Como a banda te chama?',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Nome e instrumento. Sem isso o convite não termina e a lista fica sem te reconhecer.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.45,
+                        ),
+                  ),
+                  const SizedBox(height: 24),
+                  PPInput(
+                    label: 'Seu nome',
+                    controller: _nameCtrl,
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Instrumento',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final instrument in AppConstants.instrumentOptions)
+                        FilterChip(
+                          label: Text(instrument),
+                          selected: _instruments.contains(instrument),
+                          onSelected: _loading
+                              ? null
+                              : (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      _instruments.add(instrument);
+                                    } else {
+                                      _instruments.remove(instrument);
+                                    }
+                                    _error = null;
+                                  });
+                                },
+                        ),
+                    ],
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Text(_error!, style: const TextStyle(color: AppColors.error)),
+                  ],
+                  const SizedBox(height: 28),
+                  PPButton(
+                    label: 'Entrar na banda',
+                    onPressed: _loading ? null : _saveIdentity,
+                    isLoading: _loading,
+                    fullWidth: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildInviteLanding(BuildContext context) {

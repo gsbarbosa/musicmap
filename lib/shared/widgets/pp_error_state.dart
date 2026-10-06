@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -18,14 +17,14 @@ class PPErrorState extends StatelessWidget {
 
   final String title;
   final String message;
+  // Os call sites ainda passam o detalhe. A tela mostra só a frase em português.
+  // ignore: unused_field
   final String? debugDetails;
   final VoidCallback? onRetry;
   final String retryLabel;
 
   @override
   Widget build(BuildContext context) {
-    final details = kDebugMode ? debugDetails : null;
-
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -48,17 +47,6 @@ class PPErrorState extends StatelessWidget {
                   ),
               textAlign: TextAlign.center,
             ),
-            if (details != null && details.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              SelectableText(
-                details,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                      fontFamily: 'monospace',
-                    ),
-                textAlign: TextAlign.center,
-              ),
-            ],
             if (onRetry != null) ...[
               const SizedBox(height: 24),
               PPButton(

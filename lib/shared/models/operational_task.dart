@@ -5,6 +5,8 @@ class OperationalTask {
   final String title;
   final String description;
   final String assignee;
+  /// uid da ficha da pessoa. Vazio em tarefas antigas, que guardam só o texto.
+  final String assigneeUserId;
   final DateTime? dueDate;
   /// low | medium | high
   final String priority;
@@ -23,6 +25,7 @@ class OperationalTask {
     required this.title,
     required this.description,
     required this.assignee,
+    this.assigneeUserId = '',
     this.dueDate,
     required this.priority,
     required this.status,
@@ -55,6 +58,7 @@ class OperationalTask {
       title: map['title']?.toString() ?? '',
       description: map['description']?.toString() ?? '',
       assignee: map['assignee']?.toString() ?? '',
+      assigneeUserId: map['assigneeUserId']?.toString() ?? '',
       dueDate: dueRaw != null && dueRaw.isNotEmpty ? DateTime.parse(dueRaw) : null,
       priority: map['priority']?.toString() ?? priorityMedium,
       status: map['status']?.toString() ?? statusOpen,
@@ -78,6 +82,7 @@ class OperationalTask {
       'title': title,
       'description': description,
       'assignee': assignee,
+      if (assigneeUserId.isNotEmpty) 'assigneeUserId': assigneeUserId,
       if (dueDate != null)
         'dueDate': DateTime(dueDate!.year, dueDate!.month, dueDate!.day).toIso8601String(),
       'priority': priority,
@@ -96,6 +101,7 @@ class OperationalTask {
     String? title,
     String? description,
     String? assignee,
+    String? assigneeUserId,
     DateTime? dueDate,
     bool clearDueDate = false,
     String? priority,
@@ -116,6 +122,7 @@ class OperationalTask {
       title: title ?? this.title,
       description: description ?? this.description,
       assignee: assignee ?? this.assignee,
+      assigneeUserId: assigneeUserId ?? this.assigneeUserId,
       dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
       priority: priority ?? this.priority,
       status: status ?? this.status,
